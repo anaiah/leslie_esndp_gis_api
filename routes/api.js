@@ -169,6 +169,13 @@ module.exports = (io) => {
 
     })
 
+
+    router.get('/testis', async (req,res) => {
+            console.log('FRING TESTIS IN API.JS')
+    } )
+
+
+
     const puppeteer = require('puppeteer');
 
     router.get('/downloadpdf', async (req, res) => {
