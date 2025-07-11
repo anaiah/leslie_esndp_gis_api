@@ -260,7 +260,7 @@ module.exports = (io) => {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename=users.pdf',
         });
-
+ 
         res.send(pdfBuffer);
 
     } catch (err) {
