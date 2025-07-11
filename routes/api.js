@@ -37,6 +37,8 @@ const router = express.Router()
 
 const fs = require('fs');
 
+const { Readable } = require('stream') // need for uploading images
+
 const PuppeteerHTMLPDF = require('puppeteer-html-pdf');
 
 const pdf = require('html-pdf');//used for pdf.create
@@ -57,16 +59,14 @@ const db  = require('../db')// your pool module
 
 //=====CLAIMS UPLOAD
 // Set up multer for file uploads
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const xlsx = require('xlsx');
 
 
 module.exports = (io) => {
-      
-
-    //========login post
+     //========login post
     router.get('/loginpost/:uid/:pwd',async(req,res)=>{
         
         const{uid,pwd}= req.params
@@ -101,10 +101,75 @@ module.exports = (io) => {
          
     })//== end loginpost
 
+
     //=== SAVE PROJECT TO MAP pgsql DATABASE 
-    router.post('/newsitepost',async(req,res)=>{
-        const { projectCode, projectName, projectOwner, latField, lonField, addressField, elevationField} = req.body
-        console.log( projectCode, projectName, projectOwner,  latField, lonField, addressField, elevationField)
+    const upload = multer({ storage: multer.memoryStorage() }).any();
+    
+    router.post('/newsitepost', upload ,async(req,res)=>{
+        //console.log(req.files, req.body)
+                
+        try {
+            const { projectCode, projectName, projectOwner, latField, lonField, addressField, cityField, elevationField} = req.body
+            
+            const fileBuffer = req.files[0].buffer;
+            const originalFileName = req.files[0].originalname
+            const renamedFileName = `${projectCode}.jpg`
+
+            // console.log(fileBuffer )
+
+            // console.log( projectCode, projectName, projectOwner,  latField, lonField, addressField, elevationField)
+
+            // Insert into database
+            const result = await db.query(
+            `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude )
+                 VALUES ($1, $2, $3, $4, $5,$6,$7,$8)
+                RETURNING id`,
+                [projectCode, projectName, projectOwner, addressField,  cityField, elevationField, latField, lonField]
+            );
+
+            try{
+                //process the image with Sharp
+                const processedBuffer = await sharp(fileBuffer)
+                    .resize({width:400})
+                    .jpeg({quality:30})
+                    .toBuffer();
+
+                //upload image via basic-ftp
+                const ftpclient = new Client()
+                
+                try{
+
+                    // basic-ftp account
+                    await ftpclient.access({
+                        host: "ftp.asianowapp.com",
+                        user: "u899193124.0811carlo",
+                        password: "u899193124.Asn",
+                    })
+
+                    //upload
+                    await ftpclient.uploadFrom( Readable.from(processedBuffer), renamedFileName)
+                
+                }catch(err){
+                    console.log('FTP ERROR',err)
+                }finally{
+                    ftpclient.close()  //close ftp
+
+                }
+            }catch(err){
+                console.log('Error processing Image:' ,err)
+            } finally{
+                //CLEANUP MEMORYSTORAGE OF IMAGEFILE
+                req.files[0].buffer = null;
+                
+                console.log('TRANSFERRED')
+                res.json({ success: true, voice: 'Data Saved!', id: result.rows[0].id });
+
+            }
+            
+        } catch (err) {
+            console.error('Error saving project:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
 
     })
 
