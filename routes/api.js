@@ -172,103 +172,105 @@ module.exports = (io) => {
     const puppeteer = require('puppeteer');
 
     router.get('/downloadpdf', async (req, res) => {
-    // Sample data: replace with your database query or data fetching logic
-    const records = [
-        { id: 1, name: 'John Doe', email: 'john@example.com' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-        { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
-    ];
 
-    // Initialize HTML content
-    let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <title>Sample Table PDF</title>
-        <style>
-            body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            }
-            h1 {
-            text-align: center;
-            }
-            table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            }
-            th, td {
-            border: 1px solid #dddddd;
-            text-align: left;
-            padding: 8px;
-            }
-            th {
-            background-color: #f2f2f2;
-            }
-        </style>
-        <!-- Alternatively, to link an external CSS -->
-        <!-- <link rel="stylesheet" href="styles.css" /> -->
-        </head>
-        <body>
-        <h1>User Records</h1>
-        <table>
-            <thead>
+        console.log('==FIRING DOWNLOADPDF===')
+        // Sample data: replace with your database query or data fetching logic
+        const records = [
+            { id: 1, name: 'John Doe', email: 'john@example.com' },
+            { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+            { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
+        ];
+
+        // Initialize HTML content
+        let htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <title>Sample Table PDF</title>
+            <style>
+                body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                }
+                h1 {
+                text-align: center;
+                }
+                table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                }
+                th, td {
+                border: 1px solid #dddddd;
+                text-align: left;
+                padding: 8px;
+                }
+                th {
+                background-color: #f2f2f2;
+                }
+            </style>
+            <!-- Alternatively, to link an external CSS -->
+            <!-- <link rel="stylesheet" href="styles.css" /> -->
+            </head>
+            <body>
+            <h1>User Records</h1>
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                </tr>
+                </thead>
+                <tbody>`;
+
+        // Populate table rows
+        let tbody = '';
+        records.forEach(record => {
+            tbody += `
             <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-            </tr>
-            </thead>
-            <tbody>`;
-
-    // Populate table rows
-    let tbody = '';
-    records.forEach(record => {
-        tbody += `
-        <tr>
-            <td>${record.id}</td>
-            <td>${record.name}</td>
-            <td>${record.email}</td>
-        </tr>`;
-    });
-
-    htmlContent += tbody + `
-            </tbody>
-        </table>
-        </body>
-        </html>`;
-
-    try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-
-        console.log('===LAUNCHING PUPPETEER=====')
-
-        // Set HTML content
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-        // Generate PDF buffer
-        const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
+                <td>${record.id}</td>
+                <td>${record.name}</td>
+                <td>${record.email}</td>
+            </tr>`;
         });
 
-        await browser.close();
+        htmlContent += tbody + `
+                </tbody>
+            </table>
+            </body>
+            </html>`;
 
-        // Set headers to trigger download
-        res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename=users.pdf',
-        });
- 
-        res.send(pdfBuffer);
+        try {
+            const browser = await puppeteer.launch();
+            const page = await browser.newPage();
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error generating PDF');
-    }
+            console.log('===LAUNCHING PUPPETEER=====')
+
+            // Set HTML content
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+            // Generate PDF buffer
+            const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
+            });
+
+            await browser.close();
+
+            // Set headers to trigger download
+            res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename=users.pdf',
+            });
+    
+            res.send(pdfBuffer);
+
+        } catch (err) {
+            console.error(err);
+            res.status(500).send('Error generating PDF');
+        }
     });
 
     //==== GET initial chart data
