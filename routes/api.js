@@ -5,6 +5,9 @@ AUTHOR : CARLO DOMINGUEZ
 multiple comment //// => IMPORTANT
 */
 const express = require('express')
+const router = express.Router()
+
+const app = express()
 
 //const Utils = require('./util')//== my func
 
@@ -15,7 +18,11 @@ const cookieParser = require('cookie-parser')
 
 const cors = require('cors')
 
+//===== for pdf
+const pdf = require('html-pdf')
 const path = require('path')
+const fs = require('fs');
+
 
 const axios = require('axios')
 
@@ -33,10 +40,6 @@ const querystring = require("querystring")
 
 const nodemailer = require("nodemailer")
 
-const router = express.Router()
-
-const fs = require('fs');
-
 const { Readable } = require('stream') // need for uploading images
 
 const hbar = require('handlebars'); //html template
@@ -45,8 +48,6 @@ const multer = require('multer') // for file manipulate
 const sharp = require('sharp')   // for image manipulate
 
 const ftpclient = require('scp2')
-
-const app = express()
 
 app.use( cookieParser() )
 
@@ -176,8 +177,7 @@ module.exports = (io) => {
 
 
 
-    const puppeteer = require('puppeteer');
-
+    
     router.get('/downloadpdf', async (req, res) => {
 
         console.log('==FIRING DOWNLOADPDF===')
@@ -197,6 +197,7 @@ module.exports = (io) => {
             <style>
                 body {
                 font-family: Arial, sans-serif;
+                font-size:11px;
                 margin: 20px;
                 }
                 h1 {
@@ -231,6 +232,35 @@ module.exports = (io) => {
                 </thead>
                 <tbody>`;
 
+                console.log(path.join(__dirname, "leslie_logo.png"))
+        //===== leslie Logo========
+        const bitmap = fs.readFileSync( path.join(__dirname, "leslie_logo.png") )
+        const logo = bitmap.toString('base64');
+
+        console.log(logo)
+                
+        // Generate PDF options with header including external image
+        const options = {
+            format: 'A4',
+            orientation: "portrait",
+            border: "5mm",
+            header: {
+            height: "25mm",
+            contents: `
+                <div style="text-align: center;">Leslie Corp.
+                <!-- External image URL (must be accessible) -->
+                <img src="data:image/png;base64,${logo}" height="59px" />
+                </div>
+            `
+            },
+            footer: {
+            height: "15mm",
+            contents: `<div style="text-align:center; font-size:10px;">Page {{page}} of {{pages}}</div>`
+            }
+        };
+
+        
+
         // Populate table rows
         let tbody = '';
         records.forEach(record => {
@@ -249,30 +279,22 @@ module.exports = (io) => {
             </html>`;
 
         try {
-            const browser = await puppeteer.launch();
-            const page = await browser.newPage();
+             // Create PDF and save to file
+            pdf.create(htmlContent, options).toFile('output.pdf', (err, result) => {
+                if (err) {
+                    console.error(err);
+                    res.status(500).send('Error creating PDF');
+                } else {
+                     console.log( path.basename(result.filename), '==created' )
 
-            console.log('===LAUNCHING PUPPETEER=====')
-
-            // Set HTML content
-            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-            // Generate PDF buffer
-            const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
+                    // Serve the file for download
+                    res.download( path.basename(result.filename), path.basename(result.filename), (err) => {
+                        if (err) console.error('Download error:', err);
+                        // Optionally delete the file after download
+                        fs.unlinkSync(path.basename(result.filename));
+                    });
+                }
             });
-
-            await browser.close();
-
-            // Set headers to trigger download
-            res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename=users.pdf',
-            });
-    
-            res.send(pdfBuffer);
 
         } catch (err) {
             console.error(err);
