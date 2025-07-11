@@ -171,7 +171,7 @@ module.exports = (io) => {
 
     const puppeteer = require('puppeteer');
 
-    router.get('/download-pdf', async (req, res) => {
+    router.get('/downloadpdf', async (req, res) => {
     // Sample data: replace with your database query or data fetching logic
     const records = [
         { id: 1, name: 'John Doe', email: 'john@example.com' },
@@ -242,6 +242,8 @@ module.exports = (io) => {
     try {
         const browser = await puppeteer.launch();
         const page = await browser.newPage();
+
+        console.log('===LAUNCHING PUPPETEER=====')
 
         // Set HTML content
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
