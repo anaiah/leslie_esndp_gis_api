@@ -85,7 +85,7 @@ app.get('/test',(req, res)=>{
 //===local routing
 
 app.get('/',(req, res)=>{
-    res.status(200).send('API ready to serve via Vercel!')
+    res.status(200).send('API ready to serve via Vercela!')
     //res.sendFile(path.join(__dirname , 'index.html'))
 })
 
