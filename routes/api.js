@@ -349,32 +349,23 @@ module.exports = (io) => {
         }
     });
 
-    router.get('/testpdf', async(req,res)=>{
-        
+    const puppeteer = require('puppeteer');
+
+router.get('/testpdf', async (req, res) => {
   try {
-    const htmlTest = `
-      <html>
-        <body>
-          <h1>Hello World</h1>
-        </body>
-      </html>`;
-    const options = { format: 'A4', printBackground: true };
-    pdf.create(htmlTest, options).toBuffer((err, buffer) => {
-      if (err) {
-        console.error('PDF creation error:', err);
-        return res.status(500).send('PDF Error');
-      }
-      res.setHeader('Content-Type', 'application/pdf');
-      res.send(buffer);
-    });
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    const htmlContent = '<h1>Hello World</h1>';
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: 'A4' });
+    await browser.close();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(pdfBuffer);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    res.status(500).send('Unexpected error during PDF');
+    console.error('Puppeteer Error:', err);
+    res.status(500).send('Error generating PDF');
   }
-
-
-    })
-
+});
     //================END DOWNLOAD PDF
        
 
