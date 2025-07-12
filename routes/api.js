@@ -175,138 +175,181 @@ module.exports = (io) => {
             console.log('FRING TESTIS IN API.JS')
     } )
 
+    const calculatePages = (totalRecords, recordsPerPage) => {
+        return Math.ceil(totalRecords / recordsPerPage);
+    }
 
-
-    
     router.get('/downloadpdf', async (req, res) => {
-
-        console.log('==FIRING DOWNLOADPDF===')
-        // Sample data: replace with your database query or data fetching logic
+    
+        console.log('==FIRING DOWNLOADPDF===');
+        // Sample data
         const records = [
             { id: 1, name: 'John Doe', email: 'john@example.com' },
             { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
             { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
+            { id: 4, name: 'Bob Williams', email: 'bob@example.com' },
+            { id: 5, name: 'Emma Brown', email: 'emma@example.com' },
+            { id: 6, name: 'Charlie Davis', email: 'charlie@example.com' }
         ];
 
-        console.log(path.join(__dirname, "leslie_logo.png"))
-        //===== leslie Logo========
-        const bitmap = fs.readFileSync( path.join(__dirname, "leslie_logo.png") )
-        const logo = bitmap.toString('base64');
+        const totalRecords = records.length;
+        const recordsPerPage = 3;
+        const totalPages = Math.ceil(totalRecords / recordsPerPage);
 
+        // Load logo as base64
+        const logoPath = path.join(__dirname, 'leslie_logo.png');
+        const logoImage = fs.readFileSync(logoPath).toString('base64');
 
-        // Initialize HTML content
-        let htmlContent = `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Document</title>
-        <style>
-                body {
-                font-family: Arial, sans-serif;
-                font-size:11px;
-                margin: 20px;
-                }
-                h1 {
-                text-align: center;
-                }
-                table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-                }
-                th, td {
-                border: 1px solid #dddddd;
-                text-align: left;
-                padding: 8px;
-                }
-                th {
-                background-color: #f2f2f2;
-                }
-            </style>
-            <!-- Alternatively, to link an external CSS -->
-            <!-- <link rel="stylesheet" href="styles.css" /> -->
-            </head>
-            <body>
-
-            <div id="pageHeader-first">
-                <div style="text-align: center;">Leslie Corp.
-                <!-- External image URL (must be accessible) -->
-                <img src="data:image/png;base64,${logo}" height="59px" />
+        // Generate headers for each page
+        let headersHtml = '';
+        for (let pageIdx = 1; pageIdx <= totalPages; pageIdx++) {
+            if (pageIdx === 1) { // first page
+            headersHtml += `
+            <div id="pageHeader-first" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
                 </div>
-            </div>
+            </div>`;
+            } else if (pageIdx === totalPages) { // last page
+            headersHtml += `
+            <div id="pageHeader-last" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
+                </div>
+            </div>`;
+            } else { // middle pages
+            headersHtml += `
+            <div id="pageHeader-${pageIdx}" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
+                </div>
+            </div>`;
+            }
+        }
 
+        // Start assembling full HTML
+        let htmlContent = `
+        <html>
+        <head>
+            <style>
+            body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        table {
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin: 0;
+        width: 100%;
+        font-size: 11px;
+        }
+
+        th, td {
+        padding: 4px; /* or less, like 2px */
+        border: 1px solid #ddd;
+        margin: 0;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        /* Force page break after */
+        .page-break {
+            page-break-after: always;
+            break-inside: avoid; /* Prevents breaking inside the group if possible */
+        }
+        /* Style for the group wrapper */
+        .record-group {
+            display: block; /* Default, kept for clarity */
+            /* optional margin for clarity in debugging */
+            /* margin-bottom: 10px; */
+        }
+            </style>
+        </head>
+        <body>
+            <!-- All headers for each page -->
+            ${headersHtml}
+        `;
+
+        // Generate groups of records, each wrapped in a div with class to enforce page-break
+        for (let i = 0; i < totalRecords; i += recordsPerPage) {
+            htmlContent += `<div class="record-group" style="width:100%;">
+            <br>
             <h1>User Records</h1>
             <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
+            <tr>
+                <td>ID</td>
+                <td>Name</td>
+                <td>Email</td>
                 </tr>
-                </thead>
-                <tbody>`;
+            `;
 
-        
-                
-        // Generate PDF options with header including external image
+            // For each record in this group, add the table row
+            const group = records.slice(i, i + recordsPerPage);
+            group.forEach(rec => {
+            htmlContent += `
+            
+                <tr>
+                <td>${rec.id}</td>
+                <td>${rec.name}</td>
+                <td>${rec.email}</td>
+                </tr>
+            `;
+            });
+            htmlContent += `</div>`;
+            // Add page break after each group except last
+            if (i + recordsPerPage < totalRecords) {
+            htmlContent += `</table><div class="page-break"></div>`;
+            }
+        }
+
+        // Finish HTML
+        htmlContent += `
+        </body>
+        </html>`;
+
+        // PDF options - specify header with default placeholder
         const options = {
             format: 'A4',
-            orientation: "portrait",
-            border: "5mm",
+            orientation: 'portrait',
+            border: '5mm',
             header: {
-                height: "25mm",
+            height: '20mm'
+            // No content here - headers are handled via the divs above
             },
             footer: {
-                height: "15mm",
-                contents: `<div style="text-align:center; font-size:10px;">PAHINA {{page}} of {{pages}}</div>`
+            height: '15mm',
+            contents: `<div style="text-align: center; font-size: 10px;">PAHINA {{page}} of {{pages}}</div>`
             }
         };
 
-        
-
-        // Populate table rows
-        let tbody = '';
-        records.forEach(record => {
-            tbody += `
-            <tr>
-                <td>${record.id}</td>
-                <td>${record.name}</td>
-                <td>${record.email}</td>
-            </tr>`;
-        });
-
-        htmlContent += tbody + `
-                </tbody>
-            </table>
-            </body>
-            </html>`;
-
         try {
-             // Create PDF and save to file
+            // Create PDF and send as download
             pdf.create(htmlContent, options).toFile('output.pdf', (err, result) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).send('Error creating PDF');
-                } else {
-                     console.log( path.basename(result.filename), '==created' )
+            if (err) {
+                console.error(err);
+                res.status(500).send('Error creating PDF');
+            } else {
+                console.log(path.basename(result.filename), '==created');
 
-                    // Serve the file for download
-                    res.download( path.basename(result.filename), path.basename(result.filename), (err) => {
-                        if (err) console.error('Download error:', err);
-                        // Optionally delete the file after download
-                        fs.unlinkSync(path.basename(result.filename));
-                    });
-                }
+                res.download(path.basename(result.filename), path.basename(result.filename), (err) => {
+                if (err) console.error('Download error:', err);
+                    // Optionally delete the file after download
+                    fs.unlinkSync(path.basename(result.filename));
+                });
+            }
             });
-
         } catch (err) {
             console.error(err);
             res.status(500).send('Error generating PDF');
         }
     });
+
+    //END DOWNLOAD PDF
+       
 
     //==== GET initial chart data
     router.get('/initialchart', async(req,res)=>{
