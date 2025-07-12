@@ -353,13 +353,104 @@ module.exports = (io) => {
 
 router.get('/puppetpdf', async (req, res) => {
   try {
-    const browser = await puppeteer.launch();
+    // Load your logo image as base64
+    const logoPath = path.join(__dirname, 'leslie_logo.png');
+    const logoImage = fs.readFileSync(logoPath).toString('base64');
+
+    // Your data
+    const records = [
+      { id: 1, name: 'John Doe', email: 'john@example.com' },
+      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+      { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
+      { id: 4, name: 'Bob Williams', email: 'bob@example.com' },
+      { id: 5, name: 'Emma Brown', email: 'emma@example.com' },
+      { id: 6, name: 'Charlie Davis', email: 'charlie@example.com' },
+    ];
+
+    // Generate HTML content (replace with your full styling & headers as needed)
+    let htmlContent = `
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            margin: 20px;
+          }
+          h1 {
+            text-align: center;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+          }
+          th {
+            background-color: #f2f2f2;
+          }
+          /* Your header styling will be controlled by Vercel (if needed) */
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center;">
+          <h1>User Records</h1>
+          <img src="data:image/png;base64,${logoImage}" height="50"/>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    // Add records in groups with page breaks
+    const recordsPerPage = 2;
+    for (let i = 0; i < records.length; i += recordsPerPage) {
+      const group = records.slice(i, i + recordsPerPage);
+      group.forEach(rec => {
+        htmlContent += `
+          <tr>
+            <td>${rec.id}</td>
+            <td>${rec.name}</td>
+            <td>${rec.email}</td>
+          </tr>`;
+      });
+      // Insert a page break after each group except last
+      if (i + recordsPerPage < records.length) {
+        htmlContent += `<div style="page-break-after: always;"></div>`;
+      }
+    }
+
+    htmlContent += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Launch Puppeteer browser
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
-    const htmlContent = '<h1>Hello World</h1>';
-    await page.setContent(htmlContent);
-    const pdfBuffer = await page.pdf({ format: 'A4' });
+
+    // Set HTML content
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+    // Generate PDF buffer
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+
     await browser.close();
+
+    // Send PDF as response
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="UserRecords.pdf"');
     res.send(pdfBuffer);
   } catch (err) {
     console.error('Puppeteer Error:', err);
