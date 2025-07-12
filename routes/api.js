@@ -188,13 +188,22 @@ module.exports = (io) => {
             { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
         ];
 
+        console.log(path.join(__dirname, "leslie_logo.png"))
+        //===== leslie Logo========
+        const bitmap = fs.readFileSync( path.join(__dirname, "leslie_logo.png") )
+        const logo = bitmap.toString('base64');
+
+
         // Initialize HTML content
         let htmlContent = `
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
-            <title>Sample Table PDF</title>
-            <style>
+            <meta charset="UTF-8">
+            <meta http-equiv="X-UA-Compatible" content="IE=edge">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Document</title>
+        <style>
                 body {
                 font-family: Arial, sans-serif;
                 font-size:11px;
@@ -221,6 +230,14 @@ module.exports = (io) => {
             <!-- <link rel="stylesheet" href="styles.css" /> -->
             </head>
             <body>
+
+            <div id="pageHeader-first">
+                <div style="text-align: center;">Leslie Corp.
+                <!-- External image URL (must be accessible) -->
+                <img src="data:image/png;base64,${logo}" height="59px" />
+                </div>
+            </div>
+
             <h1>User Records</h1>
             <table>
                 <thead>
@@ -232,12 +249,7 @@ module.exports = (io) => {
                 </thead>
                 <tbody>`;
 
-                console.log(path.join(__dirname, "leslie_logo.png"))
-        //===== leslie Logo========
-        const bitmap = fs.readFileSync( path.join(__dirname, "leslie_logo.png") )
-        const logo = bitmap.toString('base64');
-
-        console.log(logo)
+        
                 
         // Generate PDF options with header including external image
         const options = {
@@ -245,17 +257,11 @@ module.exports = (io) => {
             orientation: "portrait",
             border: "5mm",
             header: {
-            height: "25mm",
-            contents: `
-                <div style="text-align: center;">Leslie Corp.
-                <!-- External image URL (must be accessible) -->
-                <img src="data:image/png;base64,${logo}" height="59px" />
-                </div>
-            `
+                height: "25mm",
             },
             footer: {
-            height: "15mm",
-            contents: `<div style="text-align:center; font-size:10px;">Page {{page}} of {{pages}}</div>`
+                height: "15mm",
+                contents: `<div style="text-align:center; font-size:10px;">PAHINA {{page}} of {{pages}}</div>`
             }
         };
 
