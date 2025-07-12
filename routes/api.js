@@ -349,7 +349,33 @@ module.exports = (io) => {
         }
     });
 
-    //END DOWNLOAD PDF
+    router.get('testpdf', async(req,res)=>{
+        
+  try {
+    const htmlTest = `
+      <html>
+        <body>
+          <h1>Hello World</h1>
+        </body>
+      </html>`;
+    const options = { format: 'A4', printBackground: true };
+    pdf.create(htmlTest, options).toBuffer((err, buffer) => {
+      if (err) {
+        console.error('PDF creation error:', err);
+        return res.status(500).send('PDF Error');
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.send(buffer);
+    });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    res.status(500).send('Unexpected error during PDF');
+  }
+
+
+    })
+
+    //================END DOWNLOAD PDF
        
 
     //==== GET initial chart data
