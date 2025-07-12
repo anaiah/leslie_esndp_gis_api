@@ -351,7 +351,7 @@ module.exports = (io) => {
 
     const puppeteer = require('puppeteer');
 
-router.get('/testpdf', async (req, res) => {
+router.get('/puppetpdf', async (req, res) => {
   try {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
