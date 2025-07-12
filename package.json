@@ -39,7 +39,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "build": "nodemon --exec node --env-file=.env leslie.js",
+    "build": "npx playwright install",
     "dev": "nodemon --exec node --env-file=.env leslie.js",
     "test": "node leslie.js"
   },
