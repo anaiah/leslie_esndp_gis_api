@@ -235,7 +235,7 @@ module.exports = (io) => {
             <style>
             body {
             font-family: Arial, sans-serif;
-            font-size: 10px;
+            font-size: 9px;
             margin: 20px;
         }
         h1 {
@@ -246,7 +246,7 @@ module.exports = (io) => {
         border-spacing: 0;
         margin: 0;
         width: 100%;
-        font-size: 10px;
+        font-size: 9px;
         }
 
         th, td {
@@ -279,7 +279,7 @@ module.exports = (io) => {
         for (let i = 0; i < totalRecords; i += recordsPerPage) {
             htmlContent += `<div class="record-group" style="width:100%;">
             <br>
-            <h1>User Records</h1>
+            <h5>User Records</h5>
             <table>
             <tr>
                 <td>ID</td>
