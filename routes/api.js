@@ -347,7 +347,7 @@ module.exports = (io) => {
             console.error(err);
             res.status(500).send('Error generating PDF');
         }
-    });
+    }); 
 
     //================END DOWNLOAD PDF
        const { webkit, chromium, firefox } = require('playwright');
