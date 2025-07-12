@@ -235,7 +235,7 @@ module.exports = (io) => {
             <style>
             body {
             font-family: Arial, sans-serif;
-            font-size: 11px;
+            font-size: 10px;
             margin: 20px;
         }
         h1 {
@@ -246,7 +246,7 @@ module.exports = (io) => {
         border-spacing: 0;
         margin: 0;
         width: 100%;
-        font-size: 11px;
+        font-size: 10px;
         }
 
         th, td {
