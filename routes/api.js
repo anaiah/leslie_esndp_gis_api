@@ -349,7 +349,7 @@ module.exports = (io) => {
         }
     });
 
-    router.get('testpdf', async(req,res)=>{
+    router.get('/testpdf', async(req,res)=>{
         
   try {
     const htmlTest = `
