@@ -173,6 +173,7 @@ module.exports = (io) => {
 
     router.get('/testis', async (req,res) => {
             console.log('FRING TESTIS IN API.JS')
+            res.status(200).send('ok')
     } )
 
     const calculatePages = (totalRecords, recordsPerPage) => {
