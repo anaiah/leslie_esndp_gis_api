@@ -549,7 +549,37 @@ router.get('/downloadpdf', async (req, res) => {
 
 
     //==== GET initial chart data
+    router.get('testpdf', async(req, res)=>{
+let browser = null;
 
+  try {
+    let executablePath = await chromium.executablePath;
+
+    // Fallback to local Chromium if the above fails
+    if (!executablePath) {
+      executablePath = (await import('puppeteer')).executablePath();
+    }
+
+    console.log('Using executablePath:', executablePath);
+
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: executablePath,
+      headless: chromium.headless,
+    });
+
+    res.send()
+    // Rest of your code...
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).send('Error generating PDF');
+  } finally {
+    if (browser !== null) {
+      await browser.close();
+    }
+  }
+})
 
     router.get('/initialchart', async(req,res)=>{
         //return res.status(200).json()
