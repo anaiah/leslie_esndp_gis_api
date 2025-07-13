@@ -339,7 +339,7 @@ router.get('/downloadpdf', async (req, res) => {
     try { 
         let browser = null;
         
-          
+           
         
         // Generate pdf buffer
         const buffer = await htmlToPdf.generatePdf({ content: htmlContent }, options);
