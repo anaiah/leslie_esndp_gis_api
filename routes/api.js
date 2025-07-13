@@ -186,38 +186,45 @@ module.exports = (io) => {
     const puppeteer = require('puppeteer'); 
 
     router.get('/testpuppet', async(req,res) => {
-        console.log( 'testing puppet')
-         const browser = await puppeteer.launch();
+        console.log( 'testing puppet with sandbox ')
+         //const browser = await puppeteer.launch();
+
+        const browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox'], // needed for serverless
+        });
         const page = await browser.newPage();
         //await page.goto('https://google.com');
 
-          // Load logo as base64
-            const logoPath = path.join(__dirname, 'leslie_logo.png');
-            const logoImage = fs.readFileSync(logoPath).toString('base64');
-            
- await page.goto('https://example.com', {waitUntil: 'networkidle0'});
-  await page.pdf({  path: 'example.pdf', 
-                    format: 'A4',
-                    displayHeaderFooter:true,
-                margin: {
-                    top: '80px',    // enough space for header
-                    bottom: '60px', // enough space for _footer
-                    left: '20px',
-                    right: '20px'
-                },
-                headerTemplate: `
-                <div style="width:100%; font-family:Arial; font-size:10px; display:flex; flex-direction:column; align-items:center; padding-top:10px;">
-                    <img src="data:image/png;base64,${logoImage}" style="height:40px; margin-bottom:5px;">
-                    <span>Leslie Corp — User Records</span>
-                </div>
-                `,});
+        // Load logo as base64
+        const logoPath = path.join(__dirname, 'leslie_logo.png');
+        const logoImage = fs.readFileSync(logoPath).toString('base64');
+
+        await page.goto('https://example.com', {waitUntil: 'networkidle0'});
+        
+        const pdfBuffer = await page.pdf({  path: 'example.pdf', 
+            format: 'A4',
+            displayHeaderFooter:true,
+            margin: {
+                top: '80px',    // enough space for header
+                bottom: '60px', // enough space for _footer
+                left: '20px',
+                right: '20px'
+            },
+            headerTemplate: `
+            <div style="width:100%; font-family:Arial; font-size:10px; display:flex; flex-direction:column; align-items:center; padding-top:10px;">
+                <img src="data:image/png;base64,${logoImage}" style="height:40px; margin-bottom:5px;">
+                <span>Leslie Corp — User Records</span>
+            </div>`,
+        });
 
         //await page.screenshot({path: path.basename('xxxxgoogle.png')});
         await browser.close();
-        res.send('ok')
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=UserRecords.pdf');
+        res.send(pdfBuffer);
+        //res.send('ok')
     })
-
-
 
     router.get('/downloadpdf', async (req, res) => {
     

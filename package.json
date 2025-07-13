@@ -39,6 +39,7 @@
   },
   "scripts": {
     "build": "node leslie.js",
+    "start": "node leslie.js",
     "dev": "nodemon --exec node --env-file=.env leslie.js",
     "test": "node leslie.js"
   },
