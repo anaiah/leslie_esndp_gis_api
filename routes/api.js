@@ -557,35 +557,46 @@ const puppeteer = require('puppeteer-core')
 
 
 router.get('/testpdf', async(req, res)=>{
-   let browser = null;
+     let browser = null;
 
   try {
-    let executablePath = await chromium.executablePath;
-
-    // Fallback to local Chromium if the above fails
-    if (!executablePath) {
-      executablePath = (await import('puppeteer')).executablePath();
-    }
+    const executablePath = process.env.AWS_LAMBDA_FUNCTION_VERSION
+      ? await chromium.executablePath()
+      : puppeteer.executablePath();
 
     console.log('Using executablePath:', executablePath);
- 
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport, 
-      executablePath: executablePath,
-      headless: chromium.headless,
-    });
 
-    res.send('hallelujah')
-    // Rest of your code...
+    const browserArgs = process.env.AWS_LAMBDA_FUNCTION_VERSION
+      ? {
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        }
+      : {
+          headless: true,
+          executablePath: puppeteer.executablePath(),
+        };
+
+    browser = await puppeteer.launch(browserArgs);
+
+    // Example of generating a PDF (you can replace this with your actual HTML)
+    const page = await browser.newPage();
+    await page.setContent('<h1>Test PDF</h1>');
+    const pdfBuffer = await page.pdf({ format: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=output.pdf');
+    res.send(pdfBuffer);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).send('Error generating PDF');
+    res.status(500).send(`Error generating PDF: ${error.message}`);
   } finally {
     if (browser !== null) {
       await browser.close();
     }
   }
+
 })
 
     router.get('/initialchart', async(req,res)=>{
