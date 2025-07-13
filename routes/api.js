@@ -190,8 +190,8 @@ module.exports = (io) => {
          //const browser = await puppeteer.launch();
 
         const browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox'], // needed for serverless
-        });
+             args: ['--no-sandbox', '--disable-setuid-sandbox'], // needed for serverless
+         });
         const page = await browser.newPage();
         //await page.goto('https://google.com');
 
@@ -199,9 +199,9 @@ module.exports = (io) => {
         const logoPath = path.join(__dirname, 'leslie_logo.png');
         const logoImage = fs.readFileSync(logoPath).toString('base64');
 
-        await page.goto('https://example.com', {waitUntil: 'networkidle0'});
+        await page.goto('https://google.com', {waitUntil: 'networkidle0'});
         
-        const pdfBuffer = await page.pdf({  path: 'example.pdf', 
+        await page.pdf({  path: 'example.pdf', 
             format: 'A4',
             displayHeaderFooter:true,
             margin: {
@@ -219,11 +219,8 @@ module.exports = (io) => {
 
         //await page.screenshot({path: path.basename('xxxxgoogle.png')});
         await browser.close();
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=UserRecords.pdf');
-        res.send(pdfBuffer);
-        //res.send('ok')
+//res.send(pdfBuffer);
+        res.send('ok')
     })
 
     router.get('/downloadpdf', async (req, res) => {
