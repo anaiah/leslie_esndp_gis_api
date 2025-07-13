@@ -19,7 +19,7 @@ const cookieParser = require('cookie-parser')
 const cors = require('cors')
 
 //===== for pdf
-const pdf = require('html-pdf')
+//const pdf = require('html-pdf')
 const path = require('path')
 const fs = require('fs');
 
