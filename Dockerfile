@@ -1,10 +1,7 @@
-FROM ghcr.io/puppeteer/puppeteer:22.6.0
+FROM browserless/chrome:latest
 
-# Install gosu
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
-
-# Install necessary dependencies as root using gosu
-RUN gosu root apt-get update && gosu root apt-get install -y --no-install-recommends \
+# Install necessary dependencies that might be missing
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 \
     fonts-liberation \
     xdg-utils \
