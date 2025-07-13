@@ -186,7 +186,6 @@ const htmlToPdf = require('html-pdf-node');
 
 
 const chromium = require('chrome-aws-lambda');
-const puppeteer = require('puppeteer-core')
 
 router.get('/downloadpdf', async (req, res) => {
     console.log('==FIRING DOWNLOADPDF===');
@@ -549,8 +548,16 @@ router.get('/downloadpdf', async (req, res) => {
 
 
     //==== GET initial chart data
-    router.get('testpdf', async(req, res)=>{
-let browser = null;
+    
+
+
+
+console.log(chromium)
+const puppeteer = require('puppeteer-core')
+
+
+router.get('/testpdf', async(req, res)=>{
+   let browser = null;
 
   try {
     let executablePath = await chromium.executablePath;
@@ -569,7 +576,7 @@ let browser = null;
       headless: chromium.headless,
     });
 
-    res.send()
+    res.send('hallelujah')
     // Rest of your code...
   } catch (error) {
     console.error('Error:', error);
