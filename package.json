@@ -11,6 +11,7 @@
     "bootstrap-icons": "^1.10.5",
     "busboy": "^1.6.0",
     "chrome-launcher": "^1.2.0",
+    "chromium": "^3.0.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
