@@ -60,6 +60,7 @@ const db  = require('../db')// your pool module
 const upload = multer({ storage: multer.memoryStorage() });
 
 const xlsx = require('xlsx');
+const { PredefinedNetworkConditions } = require('puppeteer')
 
 
 module.exports = (io) => {
@@ -181,8 +182,42 @@ module.exports = (io) => {
     }
 
 
-    const { webkit, chromium, firefox } = require('playwright');
-    const puppeteer = require('puppeteer');
+    //const { webkit, chromium, firefox } = require('playwright');
+    const puppeteer = require('puppeteer'); 
+
+    router.get('/testpuppet', async(req,res) => {
+        console.log( 'testing puppet')
+         const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        //await page.goto('https://google.com');
+
+          // Load logo as base64
+            const logoPath = path.join(__dirname, 'leslie_logo.png');
+            const logoImage = fs.readFileSync(logoPath).toString('base64');
+            
+ await page.goto('https://example.com', {waitUntil: 'networkidle0'});
+  await page.pdf({  path: 'example.pdf', 
+                    format: 'A4',
+                    displayHeaderFooter:true,
+                margin: {
+                    top: '80px',    // enough space for header
+                    bottom: '60px', // enough space for _footer
+                    left: '20px',
+                    right: '20px'
+                },
+                headerTemplate: `
+                <div style="width:100%; font-family:Arial; font-size:10px; display:flex; flex-direction:column; align-items:center; padding-top:10px;">
+                    <img src="data:image/png;base64,${logoImage}" style="height:40px; margin-bottom:5px;">
+                    <span>Leslie Corp — User Records</span>
+                </div>
+                `,});
+
+        //await page.screenshot({path: path.basename('xxxxgoogle.png')});
+        await browser.close();
+        res.send('ok')
+    })
+
+
 
     router.get('/downloadpdf', async (req, res) => {
     
@@ -191,6 +226,7 @@ module.exports = (io) => {
 
             // Choose a browser (chromium, firefox, webkit)
             const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+            //const browser = await puppeteer.launch(); // launches bundled Chromium
             const page = await browser.newPage();
 
 
@@ -298,7 +334,7 @@ module.exports = (io) => {
             </html>`;
             
             // Set content to playwright page
-            await page.setContent(htmlContent, { waitUntil: 'networkidle' });
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
             const pdfBuffer = await page.pdf({ 
                 path:'wakanga.pdf',
@@ -325,11 +361,14 @@ module.exports = (io) => {
                 `,
             });
 
+            console.log(pdfBuffer)
+            
             await browser.close();
 
+            /*
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'attachment; filename=UserRecords.pdf');
-            res.send(pdfBuffer);
+            res.send(pdfBuffer);*/
 
         } catch (err) {
             console.error('Playwright PDF Error:', err);
