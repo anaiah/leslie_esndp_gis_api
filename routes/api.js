@@ -571,7 +571,7 @@ router.get('/testpdf', async(req, res)=>{
  
     browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      defaultViewport: chromium.defaultViewport, 
       executablePath: executablePath,
       headless: chromium.headless,
     });
