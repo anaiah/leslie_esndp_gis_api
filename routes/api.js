@@ -308,6 +308,8 @@ router.get('/downloadpdf', async (req, res) => {
     </html>
     `;
 
+    /*    digital ocean pwd 0811@M312cy
+    */
    // PDF options - specify header with default placeholder
     const options = {
         format: 'A4', 
