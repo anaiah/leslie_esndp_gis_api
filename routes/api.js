@@ -334,7 +334,7 @@ router.get('/downloadpdf', async (req, res) => {
         `,
     };
 
-    try {
+    try { 
         let browser = null;
         
           
