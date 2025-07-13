@@ -184,6 +184,10 @@ module.exports = (io) => {
 
 const htmlToPdf = require('html-pdf-node');
 
+
+const chromium = require('chrome-aws-lambda');
+const puppeteer = require('puppeteer-core')
+
 router.get('/downloadpdf', async (req, res) => {
     console.log('==FIRING DOWNLOADPDF===');
 
@@ -334,6 +338,28 @@ router.get('/downloadpdf', async (req, res) => {
     };
 
     try {
+        let browser = null;
+        
+            browser = await puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath,
+            headless: chromium.headless,
+        });
+
+    const page = await browser.newPage();
+    await page.setContent( htmlContent ); // Assuming HTML is sent in the request body
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=output.pdf');
+    res.send(pdfBuffer);
+
+
+        /*
         // Generate pdf buffer
         const buffer = await htmlToPdf.generatePdf({ content: htmlContent }, options);
 
@@ -352,6 +378,7 @@ router.get('/downloadpdf', async (req, res) => {
             // Optionally, delete file after download
             fs.unlinkSync(filepath);
         });    
+        */
     } catch (err) {
         console.error('Error generating PDF:', err);
         res.status(500).send('Error generating PDF');
