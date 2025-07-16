@@ -110,7 +110,6 @@ let userMode, userName
 
 let connectedSockets = []
 
-
 //listen socket.io
 io.on('connection', (socket) => {
 
