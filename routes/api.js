@@ -125,6 +125,17 @@ module.exports = (io) => {
                 [projectCode, projectName, projectOwner, addressField,  cityField, elevationField, latField, lonField]
             );
 
+            let obj = {}, xdata=[]
+
+            obj.pic = projectCode+".jpg"
+            obj.lat = latField
+            obj.lon = lonField
+            obj.project = projectName
+            obj.proj_owner = projectOwner
+            obj.address =  addressField + ',' + cityField
+            
+            xdata.push(obj)
+
             try{
                 //process the image with Sharp
                 const processedBuffer = await sharp(fileBuffer)
@@ -160,7 +171,7 @@ module.exports = (io) => {
                 req.files[0].buffer = null;
                 
                 console.log('TRANSFERRED')
-                res.json({ success: true, voice: 'Data Saved!', id: result.rows[0].id });
+                res.json({ info: xdata, success: true, voice: 'Data Saved!', id: result.rows[0].id });
 
             }
             

@@ -138,14 +138,19 @@ io.on('connection', (socket) => {
 		
 	}//============eif
 
-    socket.on('sendtoOpMgr', (data) => {
+
+
+
+    socket.on('sendToMgr', (data) => {
+        
         let xdata = data
         
         //loop thru array socket
         connectedSockets.forEach(socketInfo => {
-            if(parseInt(socketInfo.mode)===5){
-               socket.to( socketInfo.socketId ).emit('loadchart', data ) 
-               console.log(`Fired Event 'loadchart' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
+            if(parseInt(socketInfo.mode)===2){
+               socket.to( socketInfo.socketId ).emit('loadPin', data )
+
+               console.log(`Fired Event 'loadPin' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
             }//eif
         })
         // const finder = connectedSockets.findIndex( x => x.mode===5)
