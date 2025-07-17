@@ -138,8 +138,6 @@ io.on('connection', (socket) => {
 	}//============eif
 
 
-
-
     socket.on('sendToMgr', (data) => {
         
         let xdata = data
