@@ -99,7 +99,6 @@ module.exports = (io) => {
          
     })//== end loginpost
 
-
     //=== SAVE PROJECT TO MAP pgsql DATABASE 
     const upload = multer({ storage: multer.memoryStorage() }).any();
     
@@ -118,8 +117,8 @@ module.exports = (io) => {
             // console.log( projectCode, projectName, projectOwner,  latField, lonField, addressField, elevationField)
 
             // Insert into database
-            const result = await db.query(
-            `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude )
+            const projectResult = await db.query(
+                `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude )
                  VALUES ($1, $2, $3, $4, $5,$6,$7,$8)
                 RETURNING id`,
                 [projectCode, projectName, projectOwner, addressField,  cityField, elevationField, latField, lonField]
@@ -136,6 +135,78 @@ module.exports = (io) => {
             
             xdata.push(obj)
 
+
+            ///====insert to competitors
+            //BEFORE RETURN VALUE, DISPLAY ESTABLISHMENTS NEARBY
+            try {
+                                 
+                const establishments = await getAllEstablishments(latField,lonField);
+
+                const desiredTypes = [
+                    'convenience_store',
+                    'store',
+                    'food',
+                    'eatery',
+                    'restaurant',
+                    'point_of_interest',
+                    'establishment'
+                    ];
+
+                // Filter by types
+                const filtered = establishments.filter(place => 
+                    place.types && place.types.some(type => desiredTypes.includes(type))
+                );
+
+                // Select only properties you need
+                const result = filtered.map(place => {
+                    
+                    //one by one get distance
+                    const distance = getDistanceFromLatLonInKm(latField, lonField, place.geometry.location.lat, place.geometry.location.lng);
+                    return {
+                        name: place.name,
+                        vicinity: place.vicinity,
+                        distanceKm: parseFloat(distance).toFixed(2),
+                        lat: place.geometry.location.lat,
+                        lon: place.geometry.location.lng
+                    };
+                });
+
+                // sort the result
+                result.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
+
+                // Remove duplicates based on name and vicinity
+                const uniqueResults = [];
+                const seen = new Set();
+
+                result.forEach(place => {
+                    const key = `${place.name}-${place.vicinity}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        uniqueResults.push(place);
+                    }
+                });
+
+                //====== INSERT TO COMPETITORS TABLE
+                const projectId = projectResult.rows[0].id; // ID of the new project
+
+                const establishmentsDataJSON = JSON.stringify(uniqueResults);
+
+                const competitorResult = await db.query(
+                    `INSERT INTO esndp_competitors (project_id, establishments)
+                    VALUES ($1, $2)
+                    RETURNING id`,
+                    [projectId, establishmentsDataJSON]
+                );
+
+                //==== END INSERT TO COMPETITORS TABLE
+
+                console.log('Filtered, sorted, and unique establishments:', uniqueResults);
+                
+            } catch (error) {
+                console.error('Error fetching nearby establishments:', error);
+            }
+
+            //====== START PROCESSING IMAGE FILE TO UPLOAD
             try{
                 //process the image with Sharp
                 const processedBuffer = await sharp(fileBuffer)
@@ -171,7 +242,7 @@ module.exports = (io) => {
                 req.files[0].buffer = null;
                 
                 console.log('TRANSFERRED')
-                res.json({ info: xdata, success: true, voice: 'Data Saved!', id: result.rows[0].id });
+                res.json({ info: xdata, success: true, voice: 'Data Saved!' });
 
             }
             
@@ -182,246 +253,396 @@ module.exports = (io) => {
 
     })
 
-
     router.get('/testis', async (req,res) => {
             console.log('FRING TESTIS IN API.JS')
             res.status(200).send('ok')
-    } )
+    })
 
+    //=========FUNCTION TO GET PAGES OF PDF
     const calculatePages = (totalRecords, recordsPerPage) => {
         return Math.ceil(totalRecords / recordsPerPage);
     }
 
+    const htmlToPdf = require('html-pdf-node');
 
-const htmlToPdf = require('html-pdf-node');
+    //================DOWNLOAD PDF
+    router.get('/downloadpdf', async (req, res) => {
+        console.log('==FIRING DOWNLOADPDF===');
 
+        // Sample data
+        const records = [
+            { id: 1, name: 'John Doe', email: 'john@example.com' },
+            { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+            { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
+            { id: 4, name: 'Bob Williams', email: 'bob@example.com' },
+            { id: 5, name: 'Emma Brown', email: 'emma@example.com' },
+            { id: 6, name: 'Charlie D', email: 'charlie@example.com' }
+        ];
 
-router.get('/downloadpdf', async (req, res) => {
-    console.log('==FIRING DOWNLOADPDF===');
+        const totalRecords = records.length;
+        const recordsPerPage = 3;
+        const totalPages = Math.ceil(totalRecords / recordsPerPage);
 
-    // Sample data
-    const records = [
-        { id: 1, name: 'John Doe', email: 'john@example.com' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-        { id: 3, name: 'Alice Johnson', email: 'alice@example.com' },
-        { id: 4, name: 'Bob Williams', email: 'bob@example.com' },
-        { id: 5, name: 'Emma Brown', email: 'emma@example.com' },
-        { id: 6, name: 'Charlie D', email: 'charlie@example.com' }
-    ];
+        // Load logo as base64
+        const logoPath = path.join(__dirname, 'leslie_logo.png');
+        const logoImage = fs.readFileSync(logoPath).toString('base64');
 
-    const totalRecords = records.length;
-    const recordsPerPage = 3;
-    const totalPages = Math.ceil(totalRecords / recordsPerPage);
+        // Generate headers for each page
+        let headersHtml = '';
+    
+        /* this header is for html-pdf
+        for (let pageIdx = 1; pageIdx <= totalPages; pageIdx++) {
+            if (pageIdx === 1) { // first page
+            headersHtml += `
+            <div id="pageHeader-first" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
+                </div>
+            </div>`;
+            } else if (pageIdx === totalPages) { // last page
+            headersHtml += `
+            <div id="pageHeader-last" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
+                </div>
+            </div>`;
+            } else { // middle pages
+            headersHtml += `
+            <div id="pageHeader-${pageIdx}" style="text-align: center;">
+                <div>
+                <img src="data:image/png;base64,${logoImage}" height="59" />
+                </div>
+            </div>`;
+            }
+        }*/
 
-    // Load logo as base64
-    const logoPath = path.join(__dirname, 'leslie_logo.png');
-    const logoImage = fs.readFileSync(logoPath).toString('base64');
+        // Assemble HTML content
+        let htmlContent = `
+        <html>
+        <head>
+            <style>
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 10px;
+                margin: 20px;
+            }
+            h1 {
+                text-align: center;
+            }
+            table {
+                border-collapse: collapse;
+                border-spacing: 0;
+                margin: 0;
+                width: 100%;
+                font-size: 10px;
+            }
+            th, td {
+                padding: 4px;
+                border: 1px solid #ddd;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+            
+            .record-group {
+                display: block; /* Default, kept for clarity */
+                /* optional margin for clarity in debugging */
+                /* margin-bottom: 10px; */
+            }
+        
+            .page-break {
+                page-break-after: always;
+                break-inside: avoid;
+            }
+            </style>
+        </head>
+        <body>
+            
+        `;
 
-    // Generate headers for each page
-    let headersHtml = '';
+        // Generate record groups with page breaks
+        for (let i = 0; i < totalRecords; i += recordsPerPage) {
+            htmlContent += `
+            <div class="record-group" style="width:100%;">
+                <br>
+                <h5>User Records</h5>
+                <table>
+                <tr>
+                    <td>ID</td><td>Name</td><td>Email</td>
+                </tr>`;
+            const group = records.slice(i, i + recordsPerPage);
+            group.forEach(rec => {
+            htmlContent += `
+                <tr>
+                <td>${rec.id}</td><td>${rec.name}</td><td>${rec.email}</td>
+                </tr>`;
+            });
+
+            htmlContent += `</table></div>`;
+            // Add page break unless it's the last group
+            if (i + recordsPerPage < totalRecords)
+            htmlContent += `<div class="page-break"></div>`;
+        }
+
+        htmlContent += `
+        </body>
+        </html>
+        `;
+
+        /*    digital ocean pwd 0811@M312cy
+        */
+    // PDF options - specify header with default placeholder
+        const options = {
+            format: 'A4', 
+            printBackground: true ,
+            displayHeaderFooter:true,
+            margin: {
+
+                top: '80px',    // enough space for header
+                    bottom: '60px', // enough space for _footer
+                left: '20px',
+                right: '20px'
+            },
+            headerTemplate: `
+            <div style="width:100%; font-family:Arial; font-size:9px; display:flex; flex-direction:column; align-items:center; padding-top:0;">
+                <img src="data:image/png;base64,${logoImage}" style="height:30px; margin-bottom:1px; vertical-align:middle;">
+                <span class='heads'>Dama De Noche, Paranaque</span>
+            </div>`
+            ,
+            footerTemplate: `
+            <div style="font-size:8px; width:100%; display:flex; justify-content:space-between; align-items:center; margin:15px 0;">
+                <span style="margin-left:10px;">Confidential</span>
+                <span style="margin-right:10px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+            </div>
+            `,
+        };
+
+        try { 
+            let browser = null;
+            
+            
+            
+            // Generate pdf buffer
+            const buffer = await htmlToPdf.generatePdf({ content: htmlContent }, options);
+
+            // Save buffer to a temporary file
+            const filename = 'Records.pdf'; // or generate dynamically if needed
+            const filepath = path.join(__dirname, filename);
+
+            fs.writeFileSync(filepath, buffer);
+
+            // Send as download
+            res.download(filepath, filename, (err) => {
+            
+            if (err) {
+                console.error('Download error:', err);
+            }
+                // Optionally, delete file after download
+                fs.unlinkSync(filepath);
+            });    
+            
+        } catch (err) {
+            console.error('Error generating PDF:', err);
+            res.status(500).send('Error generating PDF');
+        }
+    });
+
+    //================END DOWNLOAD PDF
+    const API_KEY = 'AIzaSyD2KmdjMR6loRYvAAxAs84ioWrpYlPgzco'
+
+    //===== MAIN Route to get address from lat/lon (reverse geocode)
+    router.get('/geocode/:lat/:lon', async (req, res) => {
+        const { lat, lon } = req.params;
+
+        if (!lat || !lon) {
+            return res.status(400).json({ error: 'Missing lat or lon' });
+        }
+
+        try {
+            const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${API_KEY}`
+            );
+            const data = await response.json();
+            
+            //console.log( 'Geocode response:', data);
+
+            if (data.status !== 'OK') {
+            return res.status(500).json({ error: data.error_message || 'Error in geocoding' });
+            }
+
+            const address = data.results[0]?.formatted_address || 'Address not found';
+
+            const addresscomponents = data.results[0]?.address_components || [];
+            const city = addresscomponents.find(component => component.types.includes('locality'))?.long_name || 'City not found';
+            const state = addresscomponents.find(component => component.types.includes('administrative_area_level_1'))?.long_name || 'State not found';
+            const country = addresscomponents.find(component => component.types.includes('country'))?.long_name || 'Country not found';
+
+            // Fetch elevation data
+            const elevationResponse = await fetch(
+            `https://maps.googleapis.com/maps/api/elevation/json?locations=${lat},${lon}&key=${API_KEY}`
+            );
+            const elevationData = await elevationResponse.json();
+
+            const elevation =
+            elevationData.status === 'OK'
+                ? elevationData.results[0]?.elevation
+                : null;
+
+            res.json({ address, city, state, country, lat, lon, elevation}); //return value
+
+            
+        } catch (error) {
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    const keywords = ['7-11', 'angels burger','minute burger','jollibee', 
+        'mc donalds', 'kfc', 'burger machine','chowking','mang inasal','ministop','Family Mart',
+        'shakeys','pizza hut','dunkin donuts','starbucks','coffee bean','yellow cab','lawsons',
+        'bonchon','maxs restaurant','red ribbon','goldilocks','tapa king',
+        'deli france'];  
+
+    const radius = 1000; // in meters
+
+    //===get nearby establishments 
+    const getPlacesForKeyword = async (keyword, lat, lon) => {
+
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radius}&keyword=${encodeURIComponent(keyword)}&key=${API_KEY}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 'OK') {
+            return data.results;
+        } else {
+            console.error(`Error for ${keyword}: ${data.status}`);
+            return [];
+        }
+    }//end func
+
+    //=== get all establishments for all keywords/NEARBY    
+    const getAllEstablishments = async (lat, lon) => {
+
+        const results = [];
+        for (const keyword of keywords) {
+            const places = await getPlacesForKeyword(keyword,lat,lon);
+            results.push(...places);
+        }
+
+        // console.log( results )
+        return results;
+    }//end func
+
+    //================== GET DISTANCE FROM LAT/LON
+    const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+        const R = 6371; // Radius of the earth in km
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceKm = R * c;
+        return distanceKm;
+    }
+
+    //=================GET CHART DATA FOR MTD PERFORMANCE ==============
+    router.get('/mtdperformance', async(req,res)=>{
+        try {
+
+            const [datestr, datetimestr,xmos] = nuDate()
+            console.log(xmos)
+
+            const sql = `SELECT
+            u.full_name AS owner_name,
+            COUNT(CASE WHEN ep.status = 1 THEN 1 ELSE NULL END) AS "approval",
+            COUNT(CASE WHEN ep.status = 2 THEN 1 ELSE NULL END) AS "approved",
+            COUNT(CASE WHEN ep.status = 3 THEN 1 ELSE NULL END) AS "opened"
+            FROM
+            esndp_users u
+            LEFT JOIN
+            esndp_projects ep ON upper(u.full_name)  = upper(ep.owner)
+            and to_char(ep.created_at,'YYYY-MM') = '${xmos}'
+            WHERE u.grp_id = 1
+            GROUP BY
+            u.id, u.full_name;`
+            
+            const result = await db.query(sql);
+
+            //const retdata = {success:'ok'} 
+
+            res.send(result.rows)
+            console.log(result.rows)
+
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
+            
+        }
+        
+    })
+
+    //========== GET ALL PROJECT =============//
+    router.get('/getallprojects', async(req,res)=>{
+        try {
+            console.log('===== firing getallprojects() =====')
+
+            const sql = `SELECT *
+              FROM esndp_projects ;`
+
+            const result = await db.query(sql);
+
+            //const retdata = {success:'ok'} 
+
+            res.send(result.rows)
+            //console.log(result.rows)
+
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
+            
+        }
   
-    /* this header is for html-pdf
-    for (let pageIdx = 1; pageIdx <= totalPages; pageIdx++) {
-        if (pageIdx === 1) { // first page
-        headersHtml += `
-        <div id="pageHeader-first" style="text-align: center;">
-            <div>
-            <img src="data:image/png;base64,${logoImage}" height="59" />
-            </div>
-        </div>`;
-        } else if (pageIdx === totalPages) { // last page
-        headersHtml += `
-        <div id="pageHeader-last" style="text-align: center;">
-            <div>
-            <img src="data:image/png;base64,${logoImage}" height="59" />
-            </div>
-        </div>`;
-        } else { // middle pages
-        headersHtml += `
-        <div id="pageHeader-${pageIdx}" style="text-align: center;">
-            <div>
-            <img src="data:image/png;base64,${logoImage}" height="59" />
-            </div>
-        </div>`;
+    })//end get call projects
+
+
+    //===========get all competitors
+    router.get('/getallcompetitors/:projid/:lat/:lon', async(req,res)=>{
+        try {
+
+            const { projid, lat, lon } = req.params;
+
+            console.log('===== firing getallcompetitors() =====')
+
+            const sql = `SELECT a.*,b.*
+              FROM esndp_competitors a  
+              join esndp_projects b 
+              on a.project_id = b.id
+              where a.project_id = ${projid};`
+
+            const result = await db.query(sql);
+
+            //const retdata = {success:'ok'} 
+
+            res.send(result.rows)
+           // console.log(result.rows)
+
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
         }
-    }*/
 
-    // Assemble HTML content
-    let htmlContent = `
-    <html>
-    <head>
-        <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
-            margin: 20px;
-        }
-        h1 {
-            text-align: center;
-        }
-        table {
-            border-collapse: collapse;
-            border-spacing: 0;
-            margin: 0;
-            width: 100%;
-            font-size: 10px;
-        }
-        th, td {
-            padding: 4px;
-            border: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        
-        .record-group {
-            display: block; /* Default, kept for clarity */
-            /* optional margin for clarity in debugging */
-            /* margin-bottom: 10px; */
-        }
-    
-        .page-break {
-            page-break-after: always;
-            break-inside: avoid;
-        }
-        </style>
-    </head>
-    <body>
-        
-    `;
+    })
 
-    // Generate record groups with page breaks
-    for (let i = 0; i < totalRecords; i += recordsPerPage) {
-        htmlContent += `
-        <div class="record-group" style="width:100%;">
-            <br>
-            <h5>User Records</h5>
-            <table>
-            <tr>
-                <td>ID</td><td>Name</td><td>Email</td>
-            </tr>`;
-        const group = records.slice(i, i + recordsPerPage);
-        group.forEach(rec => {
-        htmlContent += `
-            <tr>
-            <td>${rec.id}</td><td>${rec.name}</td><td>${rec.email}</td>
-            </tr>`;
-        });
-
-        htmlContent += `</table></div>`;
-        // Add page break unless it's the last group
-        if (i + recordsPerPage < totalRecords)
-        htmlContent += `<div class="page-break"></div>`;
-    }
-
-    htmlContent += `
-    </body>
-    </html>
-    `;
-
-    /*    digital ocean pwd 0811@M312cy
-    */
-   // PDF options - specify header with default placeholder
-    const options = {
-        format: 'A4', 
-        printBackground: true ,
-        displayHeaderFooter:true,
-        margin: {
-
-            top: '80px',    // enough space for header
-                bottom: '60px', // enough space for _footer
-            left: '20px',
-            right: '20px'
-        },
-        headerTemplate: `
-        <div style="width:100%; font-family:Arial; font-size:9px; display:flex; flex-direction:column; align-items:center; padding-top:0;">
-            <img src="data:image/png;base64,${logoImage}" style="height:30px; margin-bottom:1px; vertical-align:middle;">
-            <span class='heads'>Dama De Noche, Paranaque</span>
-        </div>`
-        ,
-        footerTemplate: `
-        <div style="font-size:8px; width:100%; display:flex; justify-content:space-between; align-items:center; margin:15px 0;">
-            <span style="margin-left:10px;">Confidential</span>
-            <span style="margin-right:10px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-        </div>
-        `,
-    };
-
-    try { 
-        let browser = null;
-        
-           
-        
-        // Generate pdf buffer
-        const buffer = await htmlToPdf.generatePdf({ content: htmlContent }, options);
-
-        // Save buffer to a temporary file
-        const filename = 'Records.pdf'; // or generate dynamically if needed
-        const filepath = path.join(__dirname, filename);
-
-        fs.writeFileSync(filepath, buffer);
-
-        // Send as download
-        res.download(filepath, filename, (err) => {
-        
-        if (err) {
-            console.error('Download error:', err);
-        }
-            // Optionally, delete file after download
-            fs.unlinkSync(filepath);
-        });    
-        
-    } catch (err) {
-        console.error('Error generating PDF:', err);
-        res.status(500).send('Error generating PDF');
-    }
-});
-
-//================END DOWNLOAD PDF
-
- router.get('/mtdperformance', async(req,res)=>{
-    try {
-
-        const [datestr, datetimestr,xmos] = nuDate()
-        console.log(xmos)
-
-        const sql = `SELECT
-        u.full_name AS owner_name,
-        COUNT(CASE WHEN ep.status = 1 THEN 1 ELSE NULL END) AS "approval",
-        COUNT(CASE WHEN ep.status = 2 THEN 1 ELSE NULL END) AS "approved",
-        COUNT(CASE WHEN ep.status = 3 THEN 1 ELSE NULL END) AS "opened"
-        FROM
-        esndp_users u
-        LEFT JOIN
-        esndp_projects ep ON upper(u.full_name)  = upper(ep.owner)
-        and to_char(ep.created_at,'YYYY-MM') = '${xmos}'
-        WHERE u.grp_id = 1
-        GROUP BY
-        u.id, u.full_name;`
-        
-                
-        const result = await db.query(sql);
-
-        //const retdata = {success:'ok'} 
-
-        res.send(result.rows)
-        console.log(result.rows)
-
-    } catch (err) {
-        console.error('Error:', err);
-
-        return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
-        
-        
-    }
-    
- })
 
     //==== GET initial chart data
     
-
-
-
     router.get('/initialchart', async(req,res)=>{
         //return res.status(200).json()
         const retdata = {success:'ok'}
