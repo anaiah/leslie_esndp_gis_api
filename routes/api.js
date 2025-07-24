@@ -142,15 +142,23 @@ module.exports = (io) => {
                                  
                 const establishments = await getAllEstablishments(latField,lonField);
 
+                // const desiredTypes = [
+                //     'convenience_store',
+                //     'store',
+                //     'food',
+                //     'eatery',
+                //     'restaurant',
+                //     'point_of_interest',
+                //     'establishment'
+                //     ];
+
                 const desiredTypes = [
                     'convenience_store',
                     'store',
-                    'food',
-                    'eatery',
-                    'restaurant',
-                    'point_of_interest',
-                    'establishment'
+                    'burger',
+                    'pizza'
                     ];
+
 
                 // Filter by types
                 const filtered = establishments.filter(place => 
