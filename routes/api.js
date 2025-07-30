@@ -227,48 +227,23 @@ module.exports = (io) => {
                     .jpeg({quality:30})
                     .toBuffer();
 
-                
+
+                const ftp_client = new Client()
+
                 try{
 
-                    tempFilePath = path.join(os.tmpdir(), renamedFileName);
+                     // basic-ftp account
+                    await ftp_client.access({
+                        host: "ftp.asianowapp.com",
+                        user: "u899193124.0811carlo",
+                        password: "u899193124.Asn",
 
-                    console.log('Temp file path:', tempFilePath, renamedFileName);
-
-                    // Write buffer to a temporary file
-                    await fs.promises.writeFile(tempFilePath, processedBuffer);
-
-                    ftpclient.scp( tempFilePath, {
-                       	host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
-						username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
-						password: '2Timothy@1:9_10',
-						port:21,
-                        // username:'new_vantazti@vantaztic.com',
-                        // password:'vantazti0811',
-                        path: '/public_html/app/esndp/'	
-                    
-                    }, function(err) {
-                        
-                        if (err) {
-
-                            console.error('FTP upload error:', err);
-                        } else {
-                            console.log('FTP upload successful:', renamedFileName);  
-
-                
-                            fs.unlink( tempFilePath,()=>{
-                                 console.log('Deleted ORIG TEMP FILE=== ', tempFilePath)
-                            })
-                        }  
-
-                        
+						// //path: 'public_html/app/assets/resized'			
                     })
 
                 }catch(err){
                     console.log('FTP ERROR',err)
                 }finally{
-
-                    console.log('TRANSFERRED')
-                    res.json({ info: xdata, success: true, voice: 'Data Saved!' });
                     ftpclient.close()  //close ftp
 
                 }
@@ -277,10 +252,7 @@ module.exports = (io) => {
             } finally{
                 //CLEANUP MEMORYSTORAGE OF IMAGEFILE
                 req.files[0].buffer = null;
-                //fs.unlink(tempFilePath, () => {});
-
-                // console.log('TRANSFERRED')
-                // res.json({ info: xdata, success: true, voice: 'Data Saved!' });
+                res.json({ info: xdata, success: true, voice: 'Data Saved!' });
 
             }
             
