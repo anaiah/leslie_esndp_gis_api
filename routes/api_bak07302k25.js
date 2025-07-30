@@ -101,10 +101,7 @@ module.exports = (io) => {
 
     //=== SAVE PROJECT TO MAP pgsql DATABASE 
     const upload = multer({ storage: multer.memoryStorage() }).any();
-    const os = require('os');
     
-    let tempFilePath = '';
-
     router.post('/newsitepost', upload ,async(req,res)=>{
         //console.log(req.files, req.body)
                 
@@ -218,56 +215,55 @@ module.exports = (io) => {
             //====== START PROCESSING IMAGE FILE TO UPLOAD
             try{
                 //process the image with Sharp
-                // fileBuffer is the orig buffer file
-                // then processedbuffer is from sharp which is 
-                // already a resized Image
-
                 const processedBuffer = await sharp(fileBuffer)
                     .resize({width:400})
                     .jpeg({quality:30})
                     .toBuffer();
 
+                //upload image via 0-ftp
+                const ftp_client = new Client()
                 
                 try{
 
-                    tempFilePath = path.join(os.tmpdir(), renamedFileName);
+                    // basic-ftp account
+                    await ftp_client.access({
+                        // host: "ftp.asianowapp.com",
+                        // user: "u899193124.0811carlo",
+                        // password: "u899193124.Asn",
 
-                    console.log('Temp file path:', tempFilePath, renamedFileName);
-
-                    // Write buffer to a temporary file
-                    await fs.promises.writeFile(tempFilePath, processedBuffer);
-
-                    ftpclient.scp( tempFilePath, {
-                       	host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
+                        host: 'ftp.vantaztic.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
 						//port: 3331, // defaults to 21
-						username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
-						password: '2Timothy@1:9_10',
-						path: 'public_html/app/esndp/'	
-                    
-                    }, function(err) {
+						username: 'new_vantazti@vantaztic.com' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
+						password: 'vantazti0811',
                         
-                        if (err) {
-
-                            console.error('FTP upload error:', err);
-                        } else {
-                            console.log('FTP upload successful:', renamedFileName);  
-
-                
-                            fs.unlink( tempFilePath,()=>{
-                                 console.log('Deleted ORIG TEMP FILE=== ', tempFilePath)
-                            })
-                        }  
-
-                        
+						// //path: 'public_html/app/assets/resized'			
                     })
 
+// Log current directory for debugging
+    const currentDir = await ftp_client.pwd();
+    console.log('Current Directory:', currentDir);
+
+    // List directories to verify
+    const list = await ftp_client.list();
+    console.log('Directory Listing:', list);
+
+    // Ensure target directory exists
+    await ftp_client.ensureDir('/public_html/app/esndp/');
+
+    // Upload the file
+    await ftp_client.uploadFrom(Readable.from(processedBuffer), renamedFileName);
+
+
+
+                    // await ftp_client.ensureDir('public_html/app/esndp/') //ensure dir exists
+                    // await ftp_client.cd("public_html/app/esndp/");
+                    // //upload
+                    // await ftp_client.uploadFrom( Readable.from(processedBuffer), renamedFileName)
+                
                 }catch(err){
                     console.log('FTP ERROR',err)
                 }finally{
-
-                    console.log('TRANSFERRED')
-                    res.json({ info: xdata, success: true, voice: 'Data Saved!' });
-                    ftpclient.close()  //close ftp
+                    ftp_client.close()  //close ftp
 
                 }
             }catch(err){
@@ -275,10 +271,9 @@ module.exports = (io) => {
             } finally{
                 //CLEANUP MEMORYSTORAGE OF IMAGEFILE
                 req.files[0].buffer = null;
-                //fs.unlink(tempFilePath, () => {});
-
-                // console.log('TRANSFERRED')
-                // res.json({ info: xdata, success: true, voice: 'Data Saved!' });
+                
+                console.log('TRANSFERRED')
+                res.json({ info: xdata, success: true, voice: 'Data Saved!' });
 
             }
             
