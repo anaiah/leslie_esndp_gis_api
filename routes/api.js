@@ -241,10 +241,10 @@ module.exports = (io) => {
 						// //path: 'public_html/app/assets/resized'			
                     })
 
-                    await ftp_client.ensureDir('public_html/app/esndp/') //ensure dir exists
-                    await ftp_client.cd("public_html/app/esndp/");
+                    // await ftp_client.ensureDir('public_html/app/esndp/') //ensure dir exists
+                    // await ftp_client.cd("public_html/app/esndp/");
                     console.log('FTP Client connected==========')
-                    
+
                     //upload
                     await ftp_client.uploadFrom( Readable.from(processedBuffer), renamedFileName)
 
