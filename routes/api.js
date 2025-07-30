@@ -220,26 +220,27 @@ module.exports = (io) => {
                     .jpeg({quality:30})
                     .toBuffer();
 
-                //upload image via basic-ftp
-                const ftpclient = new Client()
+                //upload image via 0-ftp
+                const ftp_client = new Client()
                 
                 try{
 
                     // basic-ftp account
-                    await ftpclient.access({
-                        // host: "ftp.asianowapp.com",
-                        // user: "u899193124.0811carlo",
-                        // password: "u899193124.Asn",
+                    await ftp_client.access({
+                        host: "ftp.asianowapp.com",
+                        user: "u899193124.0811carlo",
+                        password: "u899193124.Asn",
 
-                        host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
-						//port: 3331, // defaults to 21
-						username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
-						password: '2Timothy@1:9_10',
-						//path: 'public_html/app/assets/resized'			
+                        // host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
+						// //port: 3331, // defaults to 21
+						// username: 'new_vantazti@vantaztic.com' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
+						// password: 'vantazti0811'
+						// //path: 'public_html/app/assets/resized'			
                     })
 
+                    await ftp_client.ensureDir('public_html/app/esndp/') //ensure dir exists
                     //upload
-                    await ftpclient.uploadFrom( Readable.from(processedBuffer), renamedFileName)
+                    await ftp_client.uploadFrom( Readable.from(processedBuffer), renamedFileName)
                 
                 }catch(err){
                     console.log('FTP ERROR',err)

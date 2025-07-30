@@ -28,7 +28,6 @@
     "mysql2": "^3.12.0",
     "node-fetch": "^2.6.8",
     "nodemailer": "^6.9.14",
-    "nodemon": "^2.0.22",
     "pg": "^8.13.1",
     "puppeteer": "^24.12.1",
     "qrcode": "^1.5.3",
@@ -49,5 +48,8 @@
     "ESNDP GIS`"
   ],
   "author": "Carlo O. Dominguez",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
 }
