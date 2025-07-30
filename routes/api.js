@@ -235,8 +235,8 @@ module.exports = (io) => {
                      // basic-ftp account
                     await ftp_client.access({
                         host: "ftp.asianowapp.com",
-                        user: "u899193124.0811carlo",
-                        password: "u899193124.Asn",
+                        user: "u899193124.ftpesndp",//ftpesndp
+                        password: "Ftp@esndp0811", //Ftp@esndp0811
 
 						// //path: 'public_html/app/assets/resized'			
                     })
