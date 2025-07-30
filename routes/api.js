@@ -155,12 +155,10 @@ module.exports = (io) => {
                 const desiredTypes = [
                     'convenience_store',
                     'store',
-                    'burger',
-                    'pizza'
-                    ];
+                    'burger' 
+                 ];
 
-
-                // Filter by types
+               // Filter by types
                 const filtered = establishments.filter(place => 
                     place.types && place.types.some(type => desiredTypes.includes(type))
                 );
@@ -237,7 +235,7 @@ module.exports = (io) => {
 						//port: 3331, // defaults to 21
 						username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
 						password: '2Timothy@1:9_10',
-						path: 'public_html/app/assets/resized'			
+						//path: 'public_html/app/assets/resized'			
                     })
 
                     //upload
