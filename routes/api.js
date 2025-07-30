@@ -229,9 +229,15 @@ module.exports = (io) => {
 
                     // basic-ftp account
                     await ftpclient.access({
-                        host: "ftp.asianowapp.com",
-                        user: "u899193124.0811carlo",
-                        password: "u899193124.Asn",
+                        // host: "ftp.asianowapp.com",
+                        // user: "u899193124.0811carlo",
+                        // password: "u899193124.Asn",
+
+                        host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
+						//port: 3331, // defaults to 21
+						username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
+						password: '2Timothy@1:9_10',
+						path: 'public_html/app/assets/resized'			
                     })
 
                     //upload
