@@ -238,14 +238,14 @@ module.exports = (io) => {
                     await fs.promises.writeFile(tempFilePath, processedBuffer);
 
                     ftpclient.scp( tempFilePath, {
-                       	host: 'gator3142.hostgator.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
+                       	host: 'ftp.vantaztic.com',//process.env.FTPHOST, //--this is orig ->process.env.FTPHOST,
 						//port: 3331, // defaults to 21
 						//username: 'vantazti' , //process.env.FTPUSER, // this is orig-> process.env.FTPUSER, // defaults to "anonymous"
 						//0p0assword: '2Timothy@1:9_10',
-						
+						port:21,
                         username:'new_vantazti@vantaztic.com',
                         password:'vantazti0811',
-                        path: 'public_html/app/esndp/'	
+                        path: '/public_html/app/esndp/'	
                     
                     }, function(err) {
                         
