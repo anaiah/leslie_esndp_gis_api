@@ -109,7 +109,15 @@ module.exports = (io) => {
         //console.log(req.files, req.body)
                 
         try {
-            const { projectCode, projectName, projectOwner, latField, lonField, addressField, cityField, elevationField} = req.body
+            const { projectCode, 
+                projectName, 
+                projectOwner, 
+                latField, 
+                lonField,
+                addressField,
+                cityField, 
+                elevationField,
+                competitors } = req.body
             
             const fileBuffer = req.files[0].buffer;
             const originalFileName = req.files[0].originalname
@@ -124,7 +132,16 @@ module.exports = (io) => {
                 `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude )
                  VALUES ($1, $2, $3, $4, $5,$6,$7,$8)
                 RETURNING id`,
-                [projectCode, projectName, projectOwner, addressField,  cityField, elevationField, latField, lonField]
+                [
+                    projectCode, 
+                    projectName, 
+                    projectOwner, 
+                    addressField,  
+                    cityField, 
+                    elevationField, 
+                    latField, 
+                    lonField
+                ]
             );
 
             let obj = {}, xdata=[]
@@ -138,82 +155,20 @@ module.exports = (io) => {
             
             xdata.push(obj)
 
+            //====== INSERT TO COMPETITORS TABLE
+            const projectId = projectResult.rows[0].id; // ID of the new project
 
-            ///====insert to competitors
-            //BEFORE RETURN VALUE, DISPLAY ESTABLISHMENTS NEARBY
-            try {
-                                 
-                const establishments = await getAllEstablishments(latField,lonField);
+            const establishmentsDataJSON = JSON.stringify(competitors)
 
-                // const desiredTypes = [
-                //     'convenience_store',
-                //     'store',
-                //     'food',
-                //     'eatery',
-                //     'restaurant',
-                //     'point_of_interest',
-                //     'establishment'
-                //     ];
+            // Insert competitors data into the esndp_competitors table
+            const competitorResult = await db.query(
+                `INSERT INTO esndp_competitors (project_id, establishments)
+                VALUES ($1, $2)
+                RETURNING id`,
+                [projectId, establishmentsDataJSON]
+            );
 
-                const desiredTypes = [
-                    'convenience_store',
-                    'store',
-                    'burger' 
-                 ];
-
-               // Filter by types
-                const filtered = establishments.filter(place => 
-                    place.types && place.types.some(type => desiredTypes.includes(type))
-                );
-
-                // Select only properties you need
-                const result = filtered.map(place => {
-                    
-                    //one by one get distance
-                    const distance = getDistanceFromLatLonInKm(latField, lonField, place.geometry.location.lat, place.geometry.location.lng);
-                    return {
-                        name: place.name,
-                        vicinity: place.vicinity,
-                        distanceKm: parseFloat(distance).toFixed(2),
-                        lat: place.geometry.location.lat,
-                        lon: place.geometry.location.lng
-                    };
-                });
-
-                // sort the result
-                result.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
-
-                // Remove duplicates based on name and vicinity
-                const uniqueResults = [];
-                const seen = new Set();
-
-                result.forEach(place => {
-                    const key = `${place.name}-${place.vicinity}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        uniqueResults.push(place);
-                    }
-                });
-
-                //====== INSERT TO COMPETITORS TABLE
-                const projectId = projectResult.rows[0].id; // ID of the new project
-
-                const establishmentsDataJSON = JSON.stringify(uniqueResults);
-
-                const competitorResult = await db.query(
-                    `INSERT INTO esndp_competitors (project_id, establishments)
-                    VALUES ($1, $2)
-                    RETURNING id`,
-                    [projectId, establishmentsDataJSON]
-                );
-
-                //==== END INSERT TO COMPETITORS TABLE
-
-                console.log('Filtered, sorted, and unique establishments:', uniqueResults);
-                
-            } catch (error) {
-                console.error('Error fetching nearby establishments:', error);
-            }
+            //==== END INSERT TO COMPETITORS TABLE
 
             //====== START PROCESSING IMAGE FILE TO UPLOAD
             try{
@@ -468,6 +423,22 @@ module.exports = (io) => {
     //================END DOWNLOAD PDF
     const API_KEY = 'AIzaSyD2KmdjMR6loRYvAAxAs84ioWrpYlPgzco'
 
+    // const keywords = ['7-11', 'angels burger','minute burger','jollibee', 
+    //     'mc donalds', 'kfc', 'burger machine','chowking','mang inasal','ministop','Family Mart',
+    //     'shakeys','pizza hut','dunkin donuts','starbucks','coffee bean','yellow cab','lawsons',
+    //     'bonchon','maxs restaurant','red ribbon','goldilocks','tapa king',
+    //     'deli france'];  
+
+
+    
+    const keywords = ['7-11', 'angels burger','minute burger','jollibee', 
+        'mc donalds', 'kfc', 'burger machine','ministop','Family Mart',
+        'dunkin donuts','lawsons'];  
+    
+    const radius = 1000; // in meters
+
+    let newdistance = 0; // for distance calculation
+
     //===== MAIN Route to get address from lat/lon (reverse geocode)
     router.get('/geocode/:lat/:lon', async (req, res) => {
         const { lat, lon } = req.params;
@@ -504,9 +475,91 @@ module.exports = (io) => {
             const elevation =
             elevationData.status === 'OK'
                 ? elevationData.results[0]?.elevation
-                : null;
+                : 0; // Default to 0 if elevation not found
 
-            res.json({ address, city, state, country, lat, lon, elevation}); //return value
+
+
+            //======get competitors
+                        ///====insert to competitors
+            //BEFORE RETURN VALUE, DISPLAY ESTABLISHMENTS NEARBY
+            try {
+                                 
+                const establishments = await getAllEstablishments(lat,lon);
+
+              
+                const desiredTypes = [
+                    'convenience_store',
+                    'store',
+                    'burger' 
+                 ];
+
+               // Filter by types
+                const filtered = establishments.filter(place => 
+                    place.types && place.types.some(type => desiredTypes.includes(type))
+                );
+
+                // Select only properties you need
+                const result = filtered.map(place => {
+                    
+                    //one by one get distance
+                    const distance = getDistanceFromLatLonInKm(lat, lon, place.geometry.location.lat, place.geometry.location.lng);
+                     // store the last distance for debug
+                    
+                        console.log('distance', distance, place.name)
+
+                        return {
+                            name: place.name,
+                            vicinity: place.vicinity,
+                            distanceKm:  parseFloat(distance).toFixed(2),
+                            lat: place.geometry.location.lat,
+                            lon: place.geometry.location.lng
+                        };
+                    
+                    
+                });
+
+                // sort the result
+                result.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
+
+                // Remove duplicates based on name and vicinity
+                const uniqueResults = [];
+                const seen = new Set();
+
+                result.forEach(place => {
+                    const key = `${place.name}-${place.vicinity}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+
+                        newdistance = parseFloat(place.distanceKm) * 1000
+                        
+                        if(newdistance < radius){
+                            uniqueResults.push(place);
+                        }
+                    }
+                });
+
+                //====== INSERT TO COMPETITORS TABLE
+                //  const projectId = projectResult.rows[0].id; // ID of the new project
+
+                const establishmentsDataJSON = JSON.stringify(uniqueResults);
+
+                // const competitorResult = await db.query(
+                //     `INSERT INTO esndp_competitors (project_id, establishments)
+                //     VALUES ($1, $2)
+                //     RETURNING id`,
+                //     [projectId, establishmentsDataJSON]
+                // );
+
+                //==== END INSERT TO COMPETITORS TABLE
+
+                //console.log('Filtered, sorted, and unique establishments:', uniqueResults);
+                res.json({ address, city, state, country, lat, lon, elevation, xdata: uniqueResults }); //return value
+
+            } catch (error) {
+                console.error('Error fetching nearby establishments:', error);
+                res.status(500).json({ error: 'Failed to fetch nearby establishments', details: error.message }); // Send an error response to the client
+            }
+
 
             
         } catch (error) {
@@ -514,13 +567,7 @@ module.exports = (io) => {
         }
     });
 
-    const keywords = ['7-11', 'angels burger','minute burger','jollibee', 
-        'mc donalds', 'kfc', 'burger machine','chowking','mang inasal','ministop','Family Mart',
-        'shakeys','pizza hut','dunkin donuts','starbucks','coffee bean','yellow cab','lawsons',
-        'bonchon','maxs restaurant','red ribbon','goldilocks','tapa king',
-        'deli france'];  
-
-    const radius = 1000; // in meters
+  
 
     //===get nearby establishments 
     const getPlacesForKeyword = async (keyword, lat, lon) => {
@@ -533,7 +580,7 @@ module.exports = (io) => {
         if (data.status === 'OK') {
             return data.results;
         } else {
-            console.error(`Error for ${keyword}: ${data.status}`);
+            //////  take out muna, this tells u nothing found in Brand A brand B etc, //console.error(`Error for ${keyword}: ${data.status}`);
             return [];
         }
     }//end func
@@ -576,9 +623,10 @@ module.exports = (io) => {
 
             const sql = `SELECT
             u.full_name AS owner_name,
-            COUNT(CASE WHEN ep.status = 1 THEN 1 ELSE NULL END) AS "approval",
-            COUNT(CASE WHEN ep.status = 2 THEN 1 ELSE NULL END) AS "approved",
-            COUNT(CASE WHEN ep.status = 3 THEN 1 ELSE NULL END) AS "opened"
+            COUNT(CASE WHEN ep.status = 1 THEN 1 ELSE NULL END) AS "sourced",
+            COUNT(CASE WHEN ep.status = 2 THEN 1 ELSE NULL END) AS "nego",
+            COUNT(CASE WHEN ep.status = 3 THEN 1 ELSE NULL END) AS "secured",
+            COUNT(CASE WHEN ep.status = 4 THEN 1 ELSE NULL END) AS "opened"
             FROM
             esndp_users u
             LEFT JOIN
@@ -628,7 +676,74 @@ module.exports = (io) => {
   
     })//end get call projects
 
+    //========== GET PROJECT PER SDO =============//
+    router.get('/getallmyprojects/:owner', async(req,res)=>{
+        try {
+            console.log('===== firing getallMyprojects() =====')
 
+            const sql = `SELECT *
+              FROM esndp_projects where  owner = $1;`
+
+            const result = await db.query(sql,[req.params.owner]);
+
+            //const retdata = {success:'ok'} 
+
+            res.send(result.rows)
+            //console.log(result.rows)
+
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
+            
+        }
+  
+    })//end get call projects
+
+    router.put('/updatemyprojects/:projectId/:status', async (req, res) => {
+        console.log('==========UPDATING PROJECT STATUS=========');
+
+        const { projectId } = req.params; // Project ID from the URL parameter
+        const { status } = req.body; // New status from the request body
+
+        // Validation (optional, but recommended)
+        if (!projectId || !Number.isInteger(Number(projectId))) {
+            return res.status(400).json({ error: 'Invalid project ID' });
+        }
+        if (!status || !Number.isInteger(Number(status))) {
+            return res.status(400).json({ error: 'Invalid status value' });
+        }
+
+        try {
+
+            const sql = `UPDATE esndp_projects SET status = ${status} WHERE id = ${projectId}`
+
+            console.log(sql)
+
+            // Update the project status in the database
+            const result = await db.query(
+                'UPDATE esndp_projects SET status = $1 WHERE id = $2',
+                [status, projectId]
+            );
+
+            // Check if the project was found and updated
+            if (result.rowCount === 0) {
+                return res.status(404).json({ error: 'Project not found' });
+            }
+
+            // Send a success response
+            res.json({ status:true,message: 'Project status updated successfully' });
+        } catch (error) {
+            console.error('Error updating project status:', error);
+            res.status(500).json({ error: 'Failed to update project status', details: error.message });
+        }
+    });
+
+
+
+
+
+    
     //===========get all competitors
     router.get('/getallcompetitors/:projid/:lat/:lon', async(req,res)=>{
         try {
