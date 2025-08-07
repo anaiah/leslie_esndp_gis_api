@@ -485,7 +485,6 @@ module.exports = (io) => {
             try {
                                  
                 const establishments = await getAllEstablishments(lat,lon);
-
               
                 const desiredTypes = [
                     'convenience_store',
@@ -505,7 +504,7 @@ module.exports = (io) => {
                     const distance = getDistanceFromLatLonInKm(lat, lon, place.geometry.location.lat, place.geometry.location.lng);
                      // store the last distance for debug
                     
-                        console.log('distance', distance, place.name)
+                       // console.log('distance', distance, place.name)
 
                         return {
                             name: place.name,
@@ -515,8 +514,7 @@ module.exports = (io) => {
                             lon: place.geometry.location.lng
                         };
                     
-                    
-                });
+                });// === end fornext
 
                 // sort the result
                 result.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
@@ -533,6 +531,7 @@ module.exports = (io) => {
                         newdistance = parseFloat(place.distanceKm) * 1000
                         
                         if(newdistance < radius){
+                            console.log('Adding place:', place.name, 'at distance:', place.distanceKm, 'km')
                             uniqueResults.push(place);
                         }
                     }
@@ -543,15 +542,6 @@ module.exports = (io) => {
 
                 const establishmentsDataJSON = JSON.stringify(uniqueResults);
 
-                // const competitorResult = await db.query(
-                //     `INSERT INTO esndp_competitors (project_id, establishments)
-                //     VALUES ($1, $2)
-                //     RETURNING id`,
-                //     [projectId, establishmentsDataJSON]
-                // );
-
-                //==== END INSERT TO COMPETITORS TABLE
-
                 //console.log('Filtered, sorted, and unique establishments:', uniqueResults);
                 res.json({ address, city, state, country, lat, lon, elevation, xdata: uniqueResults }); //return value
 
@@ -559,9 +549,6 @@ module.exports = (io) => {
                 console.error('Error fetching nearby establishments:', error);
                 res.status(500).json({ error: 'Failed to fetch nearby establishments', details: error.message }); // Send an error response to the client
             }
-
-
-            
         } catch (error) {
             res.status(500).json({ error: 'Server error' });
         }
@@ -739,10 +726,6 @@ module.exports = (io) => {
         }
     });
 
-
-
-
-
     
     //===========get all competitors
     router.get('/getallcompetitors/:projid/:lat/:lon', async(req,res)=>{
@@ -773,6 +756,35 @@ module.exports = (io) => {
 
     })
 
+    ///============get address frrom google api places
+    router.get('/getaddress/:address', async(req,res)=>{
+        const {address} = req.params
+
+        console.log('===== firing getaddress() =====',address)
+
+        if (!address) {
+            return res.status(400).json({ status: 'ERROR', message: 'Address is required' });
+        }
+
+        const apiKey = API_KEY; // Store your API key in an environment variable
+        const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+
+        try {
+            const response = await fetch(geocodingUrl);
+            const data = await response.json();
+
+            // Send the data back to the client
+            console.log('Geocoding response:', data);
+            res.json(data);
+
+        } catch (error) {
+            console.error('Error calling Google Maps Geocoding API:', error);
+            res.status(500).json({ status: 'ERROR', message: 'Failed to geocode address' });
+        }
+
+
+
+    })
 
     //==== GET initial chart data
     
