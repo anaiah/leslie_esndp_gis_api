@@ -569,7 +569,7 @@ module.exports = (io) => {
         } else {
             //////  take out muna, this tells u nothing found in Brand A brand B etc, //console.error(`Error for ${keyword}: ${data.status}`);
             return [];
-        }
+        } 
     }//end func
 
     //=== get all establishments for all keywords/NEARBY    
