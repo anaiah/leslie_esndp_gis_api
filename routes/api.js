@@ -609,9 +609,9 @@ module.exports = (io) => {
         try {
 
             const [datestr, datetimestr,xmos] = nuDate()
-            console.log(xmos)
+            //console.log(xmos)
 
-            const sql = `SELECT
+            const sql1 = `SELECT
             u.full_name AS owner_name,
             COUNT(CASE WHEN ep.status = 1 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz sourced",
             COUNT(CASE WHEN ep.status = 2 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz nego",
@@ -630,13 +630,36 @@ module.exports = (io) => {
             GROUP BY
             u.id, u.full_name;`
             
-            const result = await db.query(sql);
+            //const result = await db.query(sql);
 
-            //const retdata = {success:'ok'} 
+            const sql2 = `
+                SELECT
+                    r.region AS region_name,
+                    COUNT(CASE WHEN ep.status = 1 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz sourced",
+                    COUNT(CASE WHEN ep.status = 2 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz nego",
+                    COUNT(CASE WHEN ep.status = 3 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz secured",
+                    COUNT(CASE WHEN ep.status = 4 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz opened",
+                    COUNT(CASE WHEN ep.status = 1 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup sourced",
+                    COUNT(CASE WHEN ep.status = 2 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup nego",
+                    COUNT(CASE WHEN ep.status = 3 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup secured",
+                    COUNT(CASE WHEN ep.status = 4 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup opened"
+                    FROM
+                    esndp_region r
+                    LEFT JOIN
+                    esndp_projects ep ON upper(r.region)  = upper(ep.region )
+                    and to_char(ep.created_at,'YYYY-MM') = '${xmos}'
+                    GROUP BY
+                    r.region`
 
-            res.json(result.rows)
-            console.log(result.rows)
+             const [result1, result2 ] = await Promise.all([
+                db.query(sql1),
+                db.query(sql2)
+            ]) 
 
+            console.log(result1.rows)
+            console.log(result2.rows)    
+            return res.status(200).json({data_sdo: result1.rows, data_region: result2.rows})
+            
         } catch (err) {
             console.error('Error:', err);
 
@@ -673,7 +696,7 @@ module.exports = (io) => {
             //const retdata = {success:'ok'} 
 
             res.send(result.rows)
-            console.log(result.rows)
+            //console.log(result.rows)
 
         } catch (err) {
             console.error('Error:', err);
