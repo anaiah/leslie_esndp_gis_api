@@ -105,8 +105,8 @@ module.exports = (io) => {
     
     let tempFilePath = '';
 
-    router.post('/newsitepost', upload ,async(req,res)=>{
-        //console.log(req.files, req.body)
+    router.post('/newsitepost/:region', upload ,async(req,res)=>{
+        console.log('===newsitepost() SAVING DATA=====')
                 
         try {
             const { projectCode, 
@@ -114,6 +114,7 @@ module.exports = (io) => {
                 projectOwner, 
                 latField, 
                 lonField,
+                openingSelect,
                 addressField,
                 cityField, 
                 elevationField,
@@ -129,8 +130,8 @@ module.exports = (io) => {
 
             // Insert into database
             const projectResult = await db.query(
-                `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude )
-                 VALUES ($1, $2, $3, $4, $5,$6,$7,$8)
+                `INSERT INTO esndp_projects (project_code, name, owner, address, city, elevation, latitude, longitude, open_type, region)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING id`,
                 [
                     projectCode, 
@@ -140,7 +141,9 @@ module.exports = (io) => {
                     cityField, 
                     elevationField, 
                     latField, 
-                    lonField
+                    lonField,
+                    openingSelect,
+                    req.params.region
                 ]
             );
 
@@ -600,6 +603,48 @@ module.exports = (io) => {
         const distanceKm = R * c;
         return distanceKm;
     }
+
+    //================= MAIN PERFORMANCE CHART ==================
+     router.get('/sdoperformance', async(req,res)=>{
+        try {
+
+            const [datestr, datetimestr,xmos] = nuDate()
+            console.log(xmos)
+
+            const sql = `SELECT
+            u.full_name AS owner_name,
+            COUNT(CASE WHEN ep.status = 1 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz sourced",
+            COUNT(CASE WHEN ep.status = 2 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz nego",
+            COUNT(CASE WHEN ep.status = 3 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz secured",
+            COUNT(CASE WHEN ep.status = 4 and ep.open_type ='NZ' THEN 1 ELSE NULL END) AS "nz opened",
+            COUNT(CASE WHEN ep.status = 1 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup sourced",
+            COUNT(CASE WHEN ep.status = 2 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup nego",
+            COUNT(CASE WHEN ep.status = 3 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup secured",
+            COUNT(CASE WHEN ep.status = 4 and ep.open_type ='MUP' THEN 1 ELSE NULL END) AS "mup opened"
+            FROM
+            esndp_users u
+            LEFT JOIN
+            esndp_projects ep ON upper(u.full_name)  = upper(ep.owner)
+            and to_char(ep.created_at,'YYYY-MM') = '${xmos}'
+            WHERE u.grp_id = 1
+            GROUP BY
+            u.id, u.full_name;`
+            
+            const result = await db.query(sql);
+
+            //const retdata = {success:'ok'} 
+
+            res.json(result.rows)
+            console.log(result.rows)
+
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
+            
+        }
+        
+    }) 
 
     //=================GET CHART DATA FOR MTD PERFORMANCE ==============
     router.get('/mtdperformance', async(req,res)=>{
