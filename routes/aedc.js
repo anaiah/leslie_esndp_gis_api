@@ -766,6 +766,57 @@ module.exports = (io) => {
         
     })
 
+
+    router.get('/getperformance', async(req,res)=>{
+
+        console.log('/getperformance()')
+        try {
+
+            const [datestr, datetimestr,xmos] = nuDate()
+            console.log(xmos)
+
+            const sql = `SELECT
+                u.full_name AS owner_name,
+                COUNT(CASE WHEN ap.status = 1 THEN 1 ELSE NULL END) AS "reserved",
+                COUNT(CASE WHEN ap.status = 2 THEN 1 ELSE NULL END) AS "sold"
+                FROM
+                esndp_users u
+                LEFT JOIN
+                aedc_production ap ON u.id = ap.sales_agent
+                and to_char(ap.status_date,'YYYY') = '2025'
+                WHERE u.grp_id = 1 and u.project = 'aedc'
+                GROUP BY u.id, u.full_name;`
+            
+            const result = await db.query(sql);
+
+            const sql2 =`SELECT
+                ap.project_site,
+                COUNT(CASE WHEN apro.status = 1 THEN 1 END) AS reserved,
+                COUNT(CASE WHEN apro.status = 2 THEN 1 END) AS sold
+                FROM
+                aedc_project ap
+                LEFT JOIN
+                aedc_location al ON ap.id = al.project_location 
+                LEFT JOIN
+                aedc_production apro ON al.id = apro.house_id 
+                GROUP BY
+                ap.project_site
+                ORDER BY ap.project_site;`
+
+            const result2 = await db.query(sql2)
+
+            res.send({agent: result.rows, site : result2.rows })
+            
+        } catch (err) {
+            console.error('Error:', err);
+
+            return res.status(200).json({success:'fail',msg:'DATABASE ERROR, PLEASE TRY AGAIN!!!'})
+            
+        }
+        
+    })
+
+
     //========== GET ALL PROJECT =============//
     router.get('/getsite/:site', async(req,res)=>{
         try {
@@ -806,7 +857,7 @@ module.exports = (io) => {
             //const retdata = {success:'ok'} 
 
             res.send(result.rows)
-            console.log(result.rows)
+            ////console.log(result.rows)
 
         } catch (err) {
             console.error('Error:', err);

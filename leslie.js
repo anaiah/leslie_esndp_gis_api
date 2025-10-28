@@ -148,9 +148,10 @@ io.on('connection', (socket) => {
         //loop thru array socket
         connectedSockets.forEach(socketInfo => {
             if(parseInt(socketInfo.mode)===2){
-               socket.to( socketInfo.socketId ).emit('loadPin', data )
 
-               console.log(`Fired Event 'loadPin' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
+               socket.to( socketInfo.socketId ).emit('updatechart', data )
+
+               console.log(`Fired Event 'updatechart' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
             }//eif
         })
         // const finder = connectedSockets.findIndex( x => x.mode===5)
