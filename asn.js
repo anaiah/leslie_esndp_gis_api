@@ -99,6 +99,10 @@ app.get('/test',(req, res)=>{
 const usersRouter = require('./routes/api')(io);
 app.use('/', usersRouter);
 
+const aedcRouter= require('./routes/aedc')(io);
+app.use('/xxx', aedcRouter);
+
+/*
 //===============coordinator/head routes=======
 const coordRouter = require('./routes/coor');
 app.use('/coor', coordRouter);
@@ -108,6 +112,7 @@ app.use('/headcoor', headcoordRouter);
 
 const opmgrRouter = require('./routes/opmgr');
 app.use('/opmgr', opmgrRouter);
+*/
 
 const cookieParser = require('cookie-parser');
 app.use(cookieParser())

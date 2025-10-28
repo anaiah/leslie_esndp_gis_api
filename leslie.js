@@ -100,6 +100,9 @@ app.get('/test',(req, res)=>{
 const usersRouter = require('./routes/api')(io);
 app.use('/', usersRouter);
 
+const aedcRouter= require('./routes/aedc')(io);
+app.use('/aedc', aedcRouter);
+
 const cookieParser = require('cookie-parser');
 app.use(cookieParser())
 
@@ -130,9 +133,9 @@ io.on('connection', (socket) => {
 				
 		nLogged++
 				
-		console.log('*** LESLIE SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
+		console.log('*** AEDC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
 		
-		console.log(`LESLIE Connected ${nLogged}`)
+		console.log(`AEDC USERS Connected ${nLogged}`)
 		
 		
 	}//============eif
@@ -223,7 +226,7 @@ io.on('connection', (socket) => {
 
         console.log( connectedSockets)
 
-        console.log(`Leslie's User Connected ${nLogged}`)
+        console.log(`AEDC's User Connected ${nLogged}`)
         //io.emit('logged',`Zonked connected: ${nLogged }`)
     })
 
@@ -235,5 +238,5 @@ io.on('connection', (socket) => {
 const port = process.env.PORT||10000
 
 server_https.listen( port ,()=>{
-    console.log(`LESLIE'S ESNDP GIS API -- listening to port ${port}`)
+    console.log(`AEDC'S ESNDP GIS API -- listening to port ${port}`)
 })
