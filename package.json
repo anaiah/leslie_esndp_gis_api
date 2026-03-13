@@ -1,7 +1,7 @@
 {
-  "name": "esndp_gis",
-  "version": "1.0.1",
-  "description": "Leslie ESNDP GIS",
+  "name": "ccf bgc",
+  "version": "1.0.2",
+  "description": "ccf bgc",
   "main": "bgc.js",
   "dependencies": {
     "axios": "^1.4.0",
