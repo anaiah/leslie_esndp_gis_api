@@ -41,7 +41,7 @@
   "scripts": {
     "build": "node bgc.js",
     "start": "node bgc.js",
-    "dev": "nodemon --exec node --env-file=.env bgc.js",
+    "dev": "nodemon --exec node --env-file=.env bgc.js" ,
     "test": "node bgc.js"
   },
   "keywords": [
