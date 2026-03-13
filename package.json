@@ -2,7 +2,7 @@
   "name": "esndp_gis",
   "version": "1.0.1",
   "description": "Leslie ESNDP GIS",
-  "main": "leslie.js",
+  "main": "bgc.js",
   "dependencies": {
     "axios": "^1.4.0",
     "basic-ftp": "^5.0.5",
@@ -39,13 +39,13 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "build": "node leslie.js",
-    "start": "node leslie.js",
-    "dev": "nodemon --exec node --env-file=.env leslie.js",
-    "test": "node leslie.js"
+    "build": "node bgc.js",
+    "start": "node bgc.js",
+    "dev": "nodemon --exec node --env-file=.env bgc.js",
+    "test": "node bgc.js"
   },
   "keywords": [
-    "ESNDP GIS`"
+    "ESNDP GIS"
   ],
   "author": "Carlo O. Dominguez",
   "license": "ISC",

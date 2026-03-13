@@ -16,7 +16,7 @@ const http = require('http')
 //===== for socket.io
 const server_https = http.createServer( app);
 
-//const { Server } = require('socket.io');
+//const { Server } = require('socket.io'); 
 
 //===setting of socket.io
 //const io = new Server(server_https);
@@ -28,7 +28,20 @@ const io = require("socket.io")( server_https, {
       //allowedHeaders: ["vantaztic-header"],
       //credentials: true
     }
-  })
+})
+
+//******************************* connect to postgres */
+const connectToDB = async () =>{
+try {
+    const res = await db.query('SELECT NOW() AS now');
+    console.log('✅ BGC DB connected. Server time:', res.rows[0].now);
+  } catch (err) {
+    console.error('❌ BGC DB connection failed:', err.message);
+    console.error(err); // extra details
+  }
+}
+connectToDB();
+//******************************* END connect to postgres */
 
 const path = require('path')
 
@@ -83,12 +96,13 @@ app.get('/test',(req, res)=>{
 })
 
 //===local routing
-/*
+
 app.get('/',(req, res)=>{
-    res.send('API ready to serve!')
+    res.status(200).send('API ready to serve via Vercela!')
     //res.sendFile(path.join(__dirname , 'index.html'))
 })
 
+/*
 app.get('/test',(req, res)=>{
     res.send(`Enuff with the test it's working fine!`)
     //res.sendFile(path.join(__dirname , 'index.html'))
@@ -96,39 +110,25 @@ app.get('/test',(req, res)=>{
 */
 
 //===============Main Routes
-const usersRouter = require('./routes/api')(io);
-app.use('/', usersRouter);
+// const usersRouter = require('./routes/api')(io);
+// app.use('/', usersRouter);
 
 const aedcRouter= require('./routes/aedc')(io);
-app.use('/xxx', aedcRouter);
+app.use('/aedc', aedcRouter);
 
-const bgcRouter= require('./routes/bgc')(io);
+const bgcRouter= require('./routes/bgcapi')(io);
 app.use('/bgc', bgcRouter);
 
-
-/*
-//===============coordinator/head routes=======
-const coordRouter = require('./routes/coor');
-app.use('/coor', coordRouter);
-
-const headcoordRouter = require('./routes/headcoor');
-app.use('/headcoor', headcoordRouter);
-
-const opmgrRouter = require('./routes/opmgr');
-app.use('/opmgr', opmgrRouter);
-*/
 
 const cookieParser = require('cookie-parser');
 app.use(cookieParser())
 
 //===== socket.io connect
-let listClient = []
 let nLogged = 0
 let xmsg
 let userMode, userName
 
 let connectedSockets = []
-
 
 //listen socket.io
 io.on('connection', (socket) => {
@@ -150,23 +150,45 @@ io.on('connection', (socket) => {
 				
 		nLogged++
 				
-		console.log('*** NEW ASIANOW  SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
+		console.log('*** BGC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
 		
-		console.log(`NEW ASIANOW 12142K24 Connected ${nLogged}`)
+		console.log(`BGC USERS Connected ${nLogged}`)
 		
 		
 	}//============eif
 
-    socket.on('sendtoOpMgr', (data) => {
+
+    socket.on('sendToOwner', (data) => {
+        
         let xdata = data
         
+        const finder = connectedSockets.findIndex( x => x.mode=='4') //find the boss
+        
+        //console.log(finder)
+
+        if(finder >= 0){ //if found
+            //give message to the intended client
+            socket.to( connectedSockets[finder].socketId).emit('xinit', 'update chart!' )
+
+            console.log('@@@initially found opmgr', connectedSockets[finder].socketId)
+        }
+
+        if(finder ==-1){
+            //if intended client not connected, send back message to user sender
+            socket.emit('noconnect', data)
+        }
+
+        /*
         //loop thru array socket
         connectedSockets.forEach(socketInfo => {
-            if(parseInt(socketInfo.mode)===5){
-               socket.to( socketInfo.socketId ).emit('loadchart', data ) 
-               console.log(`Fired Event 'loadchart' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
+            if(parseInt(socketInfo.mode)===2){
+
+               socket.to( socketInfo.socketId ).emit('updatechart', data )
+
+               console.log(`Fired Event 'updatechart' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
             }//eif
         })
+            */
         // const finder = connectedSockets.findIndex( x => x.mode===5)
         
         // //console.log(finder)
@@ -225,8 +247,7 @@ io.on('connection', (socket) => {
     //if user disconnect
     socket.on('disconnect', (id) => {
 		console.log('disconnecting....')
-		
-		
+				
 			nLogged--
 		
             if(nLogged <= 0){
@@ -240,7 +261,7 @@ io.on('connection', (socket) => {
 
         console.log( connectedSockets)
 
-        console.log(`AsiaNow User Connected ${nLogged}`)
+        console.log(`BGC's User Connected ${nLogged}`)
         //io.emit('logged',`Zonked connected: ${nLogged }`)
     })
 
@@ -252,5 +273,5 @@ io.on('connection', (socket) => {
 const port = process.env.PORT||10000
 
 server_https.listen( port ,()=>{
-    console.log(`BGC, AEDC, LESLIE's listening to port ${port}`)
+    console.log(`BGC API -- listening to port ${port}`)
 })
