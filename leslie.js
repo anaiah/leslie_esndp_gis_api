@@ -135,27 +135,27 @@ io.on('connection', (socket) => {
 
 
     if(socket.handshake.query.userName){
-		const userNames = socket.handshake.query.userName
-		const userNamex = JSON.parse(userNames)
-		userName = userNamex.token
-		
-		userMode = userNamex.mode
-		console.log('mode==', userMode)
-				
-		connectedSockets.push({
-				socketId: socket.id,
-				mode: userMode,
-				userName
-		})		
-				
-		nLogged++
-				
-		console.log('*** BGC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
-		
-		console.log(`BGC USERS Connected ${nLogged}`)
-		
-		
-	}//============eif
+        const userNames = socket.handshake.query.userName
+        const userNamex = JSON.parse(userNames)
+        userName = userNamex.token
+        
+        userMode = userNamex.mode
+        console.log('mode==', userMode)
+                
+        connectedSockets.push({
+                socketId: socket.id,
+                mode: userMode,
+                userName
+        })		
+                
+        nLogged++
+                
+        console.log('*** BGC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
+        
+        console.log(`BGC USERS Connected ${nLogged}`)
+        
+        
+    }//============eif
 
 
     socket.on('sendToOwner', (data) => {
@@ -223,7 +223,7 @@ io.on('connection', (socket) => {
             socket.emit('noconnect', data)
         }
     })//end listener	
-	//console.log('*** SOCKET.IO SERVICES STARTED ***')
+    //console.log('*** SOCKET.IO SERVICES STARTED ***')
 
     //nLogged++
 
@@ -246,14 +246,14 @@ io.on('connection', (socket) => {
     */
     //if user disconnect
     socket.on('disconnect', (id) => {
-		console.log('disconnecting....')
-				
-			nLogged--
-		
+        console.log('disconnecting....')
+                
+            nLogged--
+        
             if(nLogged <= 0){
                 nLogged = 0
             }
-		//const togo = connectedSockets.find(o=>o.socketId === socket.id)
+        //const togo = connectedSockets.find(o=>o.socketId === socket.id)
         
         const togo = connectedSockets.findIndex( x => x.socketId === socket.id)
         
