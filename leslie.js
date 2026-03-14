@@ -28,7 +28,20 @@ const io = require("socket.io")( server_https, {
       //allowedHeaders: ["vantaztic-header"],
       //credentials: true
     }
-  })
+})
+
+//******************************* connect to postgres */
+const connectToDB = async () =>{
+try {
+    const res = await db.query('SELECT NOW() AS now');
+    console.log('✅ BGC DB connected. Server time:', res.rows[0].now);
+  } catch (err) {
+    console.error('❌ BGC DB connection failed:', err.message);
+    console.error(err); // extra details
+  }
+}
+connectToDB();
+//******************************* END connect to postgres */
 
 const path = require('path')
 
@@ -97,11 +110,15 @@ app.get('/test',(req, res)=>{
 */
 
 //===============Main Routes
-const usersRouter = require('./routes/api')(io);
-app.use('/', usersRouter);
+// const usersRouter = require('./routes/api')(io);
+// app.use('/', usersRouter);
 
 const aedcRouter= require('./routes/aedc')(io);
 app.use('/aedc', aedcRouter);
+
+const bgcRouter= require('./routes/bgcapi')(io);
+app.use('/bgc', bgcRouter);
+
 
 const cookieParser = require('cookie-parser');
 app.use(cookieParser())
@@ -133,18 +150,35 @@ io.on('connection', (socket) => {
 				
 		nLogged++
 				
-		console.log('*** AEDC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
+		console.log('*** BGC SOCKET.IO SERVICES STARTED ***\n', connectedSockets)	
 		
-		console.log(`AEDC USERS Connected ${nLogged}`)
+		console.log(`BGC USERS Connected ${nLogged}`)
 		
 		
 	}//============eif
 
 
-    socket.on('sendToMgr', (data) => {
+    socket.on('sendToOwner', (data) => {
         
         let xdata = data
         
+        const finder = connectedSockets.findIndex( x => x.mode=='4') //find the boss
+        
+        //console.log(finder)
+
+        if(finder >= 0){ //if found
+            //give message to the intended client
+            socket.to( connectedSockets[finder].socketId).emit('xinit', 'update chart!' )
+
+            console.log('@@@initially found opmgr', connectedSockets[finder].socketId)
+        }
+
+        if(finder ==-1){
+            //if intended client not connected, send back message to user sender
+            socket.emit('noconnect', data)
+        }
+
+        /*
         //loop thru array socket
         connectedSockets.forEach(socketInfo => {
             if(parseInt(socketInfo.mode)===2){
@@ -154,6 +188,7 @@ io.on('connection', (socket) => {
                console.log(`Fired Event 'updatechart' to USER: ${socketInfo.userName}, ID: ${socketInfo.socketId }`)
             }//eif
         })
+            */
         // const finder = connectedSockets.findIndex( x => x.mode===5)
         
         // //console.log(finder)
@@ -212,8 +247,7 @@ io.on('connection', (socket) => {
     //if user disconnect
     socket.on('disconnect', (id) => {
 		console.log('disconnecting....')
-		
-		
+				
 			nLogged--
 		
             if(nLogged <= 0){
@@ -227,7 +261,7 @@ io.on('connection', (socket) => {
 
         console.log( connectedSockets)
 
-        console.log(`AEDC's User Connected ${nLogged}`)
+        console.log(`BGC's User Connected ${nLogged}`)
         //io.emit('logged',`Zonked connected: ${nLogged }`)
     })
 
@@ -239,5 +273,5 @@ io.on('connection', (socket) => {
 const port = process.env.PORT||10000
 
 server_https.listen( port ,()=>{
-    console.log(`AEDC'S ESNDP GIS API -- listening to port ${port}`)
+    console.log(`BGC FINAL API -- listening to port ${port}`)
 })
