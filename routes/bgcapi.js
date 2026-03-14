@@ -207,40 +207,50 @@ module.exports = (io) => {
         GROUP BY ministry_name, service, ministry_segment
         ORDER BY ministry_name;
         `;
+        
         const result = await db.query(sql);
-        const rows = result.rows;
+        const rows = result.rows || [];
 
         // categories = unique ministry names
         const categories = [...new Set(rows.map(r => r.ministry_name))];
 
         // collect unique segments (normalized)
         const norm = s => (s || '').toString().trim();
+
+        // collect unique segments (normalized)
         const segments = [...new Set(rows.map(r => norm(r.ministry_segment)).filter(s => s))];
 
-        // build combos = for each segment, AM and PM
+        // build combos = for each segment, AM and PM (keep deterministic order)
         const combos = [];
         segments.forEach(seg => {
         combos.push({ service: 'AM', segment: seg, name: `AM • ${seg}` });
         combos.push({ service: 'PM', segment: seg, name: `PM • ${seg}` });
         });
 
-        // build a lookup map from ministry+service+segment to total for quick access
+        // build a lookup map from ministry+service+segment to total
         const map = new Map();
         rows.forEach(r => {
-        const key = `${r.ministry_name}||${(r.service||'').toString().trim()}||${norm(r.ministry_segment)}`;
-        map.set(key, Number(r.total));
+            const key = `${r.ministry_name}||${(r.service||'').toString().trim()}||${norm(r.ministry_segment)}`;
+            map.set(key, Number(r.total));
         });
 
+
         // build series: one series per combo, data aligned with categories
-        const series = combos.map(c => {
+        // use null for missing values so ApexCharts treats them as gaps
+        let series = combos.map(c => {
         const data = categories.map(cat => {
             const key = `${cat}||${c.service}||${c.segment}`;
-            return map.has(key) ? map.get(key) : 0;
+            return map.has(key) ? map.get(key) : null;
         });
         return { name: c.name, data };
         });
 
+        // remove series that are entirely null (no data at all)
+        series = series.filter(s => s.data.some(v => v !== null));
+
         return res.json({ ok: true, categories, series });
+
+    
     } catch (err) {
         console.error('chart/headcount-by-ministry error:', err);
         return res.status(500).json({ ok: false, message: err.message });
