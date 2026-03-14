@@ -202,10 +202,15 @@ module.exports = (io) => {
     router.get('/headcount-by-ministry', async (req, res) => {
     try {
         const sql = `
-        SELECT ministry_name, service, ministry_segment, SUM(headcount) AS total
-        FROM bgc_headcount
-        GROUP BY ministry_name, service, ministry_segment
-        ORDER BY ministry_name;
+        select
+        ministry_name,
+        service,
+        ministry_segment,
+        sum(headcount) as total
+        from bgc_headcount
+        where (date_added at time zone 'Asia/Manila')::date = (now() at time zone 'Asia/Manila')::date
+        group by ministry_name, service, ministry_segment, date_added
+        order by ministry_name, service;
         `;
         
         const result = await db.query(sql);
