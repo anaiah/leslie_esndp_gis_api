@@ -216,6 +216,8 @@ module.exports = (io) => {
         const result = await db.query(sql);
         const rows = result.rows || [];
 
+
+        console.log( sql, rows)
         // categories = unique ministry names
         const categories = [...new Set(rows.map(r => r.ministry_name))];
 
