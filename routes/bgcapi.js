@@ -298,7 +298,7 @@ module.exports = (io) => {
                 AND rr.date_from::date = $1::date
                 LEFT JOIN bgc_users u
                     ON u.id = rr.added_by
-                GROUP BY r.id, r.room_description
+                GROUP BY r.id, r.room_description,rr.date_from
                 ORDER BY r.room_description,rr.date_from;
                 `;
 
