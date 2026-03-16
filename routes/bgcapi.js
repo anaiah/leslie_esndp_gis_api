@@ -264,6 +264,97 @@ module.exports = (io) => {
     }
     });
 
+
+    /**** ROOM RESERVATION, GET ROOMS AND SCHED */
+        router.get('/getrooms/:date', async (req, res) => {
+
+            console.log('====Firing getrooms() from calendar.getrooms() ')
+            const { date } = req.params; // expected 'YYYY-MM-DD'
+            if (!date) {
+                return res.status(400).json({ success: false, error: 'date is required' });
+            }
+
+            try {
+
+                const sql = `
+                SELECT
+                    r.id,
+                    r.room_description,
+                    COALESCE(
+                    json_agg(
+                        json_build_object(
+                        'id', rr.id,
+                        'date_from', rr.date_from,
+                        'date_to', rr.date_to,
+                        'added_by', rr.added_by,
+                        'added_by_name', u.full_name
+                        )
+                    ) FILTER (WHERE rr.id IS NOT NULL),
+                    '[]'::json
+                    ) AS reservations
+                FROM bgc_rooms r
+                LEFT JOIN bgc_room_reserve rr
+                    ON rr.room_id = r.id
+                AND rr.date_from::date = $1::date
+                LEFT JOIN bgc_users u
+                    ON u.id = rr.added_by
+                GROUP BY r.id, r.room_description
+                ORDER BY r.room_description;
+                `;
+
+                const result = await db.query(sql, [date]);
+
+                console.log(sql, result)
+                res.json({
+                success: true,
+                date,
+                rooms: result.rows, // [{ id, room_description, reservations: [...] }]
+                });
+            } catch (err) {
+                console.error('Error fetching rooms:', err);
+                res.status(500).json({ success: false, error: 'Server error' });
+            }
+        });
+    
+    
+    // THIS IS THE ACTUAL ROOM RESERVATION
+    router.post('/room-reserve', express.json(), async (req, res) => {
+        
+        console.log('firing room-reserve()----')
+
+        const { room_id, date_from, date_to, added_by } = req.body;
+
+        if (!room_id || !date_from || !date_to || !added_by) {
+            return res.status(400).json({
+            success: false,
+            error: 'room_id, date_from, date_to, added_by are required'
+            });
+        }
+
+        try {
+            const query = `
+            INSERT INTO bgc_room_reserve (room_id, date_from, date_to, added_by)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, room_id, date_from, date_to, date_added, added_by
+            `;
+            const params = [room_id, date_from, date_to, added_by];
+
+            const result = await db.query(query, params);
+
+            res.json({
+            success: true,
+            reservation: result.rows[0]
+            });
+        } catch (err) {
+            console.error('Error inserting reservation:', err);
+            res.status(500).json({
+            success: false,
+            error: 'Server error while saving reservation'
+            });
+        }
+    });
+
+
     router.post('/newsitepost/:region', upload ,async(req,res)=>{
         console.log('===newsitepost() SAVING DATA=====')
                 
