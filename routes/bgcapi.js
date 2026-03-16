@@ -299,7 +299,7 @@ module.exports = (io) => {
                 LEFT JOIN bgc_users u
                     ON u.id = rr.added_by
                 GROUP BY r.id, r.room_description
-                ORDER BY r.room_description;
+                ORDER BY r.room_description,rr.date_from;
                 `;
 
                 const result = await db.query(sql, [date]);
