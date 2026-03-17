@@ -266,57 +266,68 @@ module.exports = (io) => {
 
 
     /**** ROOM RESERVATION, GET ROOMS AND SCHED */
-        router.get('/getrooms/:date', async (req, res) => {
+    router.get('/getrooms/:date', async (req, res) => {
 
-            console.log('====Firing getrooms() from calendar.getrooms() ')
-            const { date } = req.params; // expected 'YYYY-MM-DD'
-            if (!date) {
-                return res.status(400).json({ success: false, error: 'date is required' });
-            }
+        console.log('====Firing getrooms() from calendar.getrooms() ')
+        const { date } = req.params; // expected 'YYYY-MM-DD'
+        if (!date) {
+            return res.status(400).json({ success: false, error: 'date is required' });
+        }
 
-            try {
+        try {
 
-                const sql = `
-                SELECT
-                    r.id,
-                    r.room_description,
-                    COALESCE(
+            const sql = `
+            SELECT
+                rr.id AS booking_id,
+                r.id,
+                r.room_description,
+                COALESCE(
                     json_agg(
-                        json_build_object(
+                    json_build_object(
                         'id', rr.id,
                         'date_from', rr.date_from,
                         'date_to', rr.date_to,
                         'added_by', rr.added_by,
-                        'added_by_name', u.full_name
-                        )
+                        'added_by_name', u.full_name,
+                        'ministry', m.ministry_description
+                    )
                     ) FILTER (WHERE rr.id IS NOT NULL),
                     '[]'::json
-                    ) AS reservations
-                FROM bgc_rooms r
-                LEFT JOIN bgc_room_reserve rr
-                    ON rr.room_id = r.id
-                AND rr.date_from::date = $1::date
-                LEFT JOIN bgc_users u
-                    ON u.id = rr.added_by
-                GROUP BY r.id, r.room_description,rr.date_from
-                ORDER BY r.room_description,rr.date_from;
-                `;
+                ) AS reservations
+            FROM bgc_rooms r
+            LEFT JOIN bgc_room_reserve rr
+                ON rr.room_id = r.id
+            AND rr.date_from::date = $1::date
+            LEFT JOIN bgc_users u
+                ON u.id = rr.added_by
+            LEFT JOIN bgc_ministry m
+                ON m.id = u.ministry_id
+            GROUP BY
+                r.id,
+                r.room_description,
+                rr.date_from,
+                rr.id
+            ORDER BY
+                r.room_description,
+                rr.date_from;
+            `;
 
-                const result = await db.query(sql, [date]);
 
-                console.log(sql, result)
-                res.json({
-                success: true,
-                date,
-                rooms: result.rows, // [{ id, room_description, reservations: [...] }]
-                });
-            } catch (err) {
-                console.error('Error fetching rooms:', err);
-                res.status(500).json({ success: false, error: 'Server error' });
-            }
-        });
-    
-    
+            const result = await db.query(sql, [date]);
+
+            console.log(sql, result)
+            res.json({
+            success: true,
+            date,
+            rooms: result.rows, // [{ id, room_description, reservations: [...] }]
+            });
+        } catch (err) {
+            console.error('Error fetching rooms:', err);
+            res.status(500).json({ success: false, error: 'Server error' });
+        }
+    });
+
+
     // THIS IS THE ACTUAL ROOM RESERVATION
     router.post('/room-reserve', express.json(), async (req, res) => {
         
@@ -351,6 +362,26 @@ module.exports = (io) => {
             success: false,
             error: 'Server error while saving reservation'
             });
+        }
+    });
+
+    // THIS IS FOR DELETION OF BOOKING RECORD
+    // DELETE /bgc/booking/:id
+    router.delete('/deletebooking/:id', async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const sql = 'DELETE FROM bgc_room_reserve WHERE id = $1';
+            const result = await db.query(sql, [id]);
+
+            if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, error: 'Not found' });
+            }
+
+            res.json({ success: true });
+        } catch (err) {
+            console.error('Error deleting booking:', err);
+            res.status(500).json({ success: false, error: 'Server error' });
         }
     });
 
